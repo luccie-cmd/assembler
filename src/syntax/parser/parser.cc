@@ -139,9 +139,7 @@ Ast* Parser::getAst()
     std::vector<AstNode*> nodes;
     while (this->currentToken->get_type() != TokenType::TEOF)
     {
-        AstNode* node = this->parseNode();
-        node->print(0);
-        nodes.push_back(node);
+        nodes.push_back(this->parseNode());
     }
     return new Ast(nodes);
 }

@@ -7,7 +7,6 @@ namespace assembler
 AstNode* Parser::parseInstruction()
 {
     Token* mnemonic = this->consume();
-    std::printf("Parsing inst\n");
     if (std::find(utils::opcodes.begin(), utils::opcodes.end(), mnemonic->get_value()) ==
         utils::opcodes.end())
     {
