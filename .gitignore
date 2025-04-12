@@ -1,0 +1,9 @@
+test.*
+*.txt
+!mypasses.txt
+nasm.asm
+*.old
+__pycache__/
+bin/
+.vscode/
+.build-cache/

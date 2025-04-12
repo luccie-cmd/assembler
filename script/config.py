@@ -1,0 +1,5 @@
+config: 'release'
+compiler: 'clang'
+outDir: 'bin'
+analyzer: 'no'
+lto: 'yes'
