@@ -104,6 +104,8 @@ class SizedExpressionNode : public ExpressionNode
     SizedExpressionNode(size_t size, ExpressionNode* expr);
     ~SizedExpressionNode();
     void print(size_t spaceOffset);
+    size_t          getSize();
+    ExpressionNode* getExpr();
 
   private:
     size_t          size;

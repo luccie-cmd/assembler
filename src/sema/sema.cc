@@ -500,8 +500,152 @@ void SemanticAnalyzer::verify()
                         }
                     }
                 endDisplacement:
+                    arguments.push_back({ExpressionNodeType::Memory, 0});
                 }
                 break;
+                case ExpressionNodeType::Sized:
+                {
+                    SizedExpressionNode* sizedExpr =
+                        reinterpret_cast<SizedExpressionNode*>(exprNode);
+                    ExpressionNode* sizedExprNodeExpr = sizedExpr->getExpr();
+                    uint8_t         sizedSize         = sizedExpr->getSize();
+                    switch (sizedExprNodeExpr->getExprType())
+                    {
+                    case ExpressionNodeType::Register:
+                    {
+                        RegisterExpressionNode* regNode =
+                            reinterpret_cast<RegisterExpressionNode*>(sizedExprNodeExpr);
+                        if (std::find(utils::registers.begin(), utils::registers.end(),
+                                      regNode->getRegister()->get_value()) ==
+                            utils::registers.end())
+                        {
+                            this->_diagMngr->log(DiagLevel::ICE, 0,
+                                                 "Invalid register passed trough to Sema.\n");
+                        }
+                        arguments.push_back({ExpressionNodeType::Register, sizedSize});
+                    }
+                    break;
+                    case ExpressionNodeType::Immediate:
+                    {
+                        arguments.push_back({ExpressionNodeType::Immediate, sizedSize});
+                    }
+                    break;
+                    case ExpressionNodeType::Memory:
+                    {
+                        MemoryExpressionNode* memNode =
+                            reinterpret_cast<MemoryExpressionNode*>(sizedExprNodeExpr);
+                        AstNode* base = memNode->getBase();
+                        if (base->getAstNodeType() != AstNodeType::Expression)
+                        {
+                            this->_diagMngr->log(DiagLevel::ICE, 0,
+                                                 "Memory expression base was not an expression.\n");
+                        }
+                        ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(base);
+                        if (baseExpr->getExprType() != ExpressionNodeType::Register)
+                        {
+                            this->_diagMngr->log(
+                                DiagLevel::ERROR, 0,
+                                "Invalid memory base argument, expected register but got %lu.\n",
+                                (size_t)baseExpr->getExprType());
+                        }
+                        AstNode* index = memNode->getIndex();
+                        if (index != nullptr)
+                        {
+                            if (index->getAstNodeType() != AstNodeType::Expression)
+                            {
+                                this->_diagMngr->log(
+                                    DiagLevel::ICE, 0,
+                                    "Memory expression index was not an expression.\n");
+                            }
+                            ExpressionNode* indexExpr = reinterpret_cast<ExpressionNode*>(index);
+                            if (indexExpr->getExprType() != ExpressionNodeType::Register)
+                            {
+                                this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                                     "Invalid memory index argument, expected "
+                                                     "register but got %lu.\n",
+                                                     (size_t)indexExpr->getExprType());
+                            }
+                        }
+                        AstNode* scale = memNode->getScale();
+                        if (scale != nullptr)
+                        {
+                            if (scale->getAstNodeType() != AstNodeType::Expression)
+                            {
+                                this->_diagMngr->log(
+                                    DiagLevel::ICE, 0,
+                                    "Memory expression scale was not an expression\n");
+                            }
+                            ExpressionNode* scaleExpr = reinterpret_cast<ExpressionNode*>(scale);
+                            if (scaleExpr->getExprType() != ExpressionNodeType::Immediate)
+                            {
+                                this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                                     "Invalid memory scale argument, expected an "
+                                                     "immediate but got %lu.\n",
+                                                     (size_t)scaleExpr->getExprType());
+                            }
+                            ImmediateExpressionNode* immScaleExpr =
+                                reinterpret_cast<ImmediateExpressionNode*>(scaleExpr);
+                            if ((std::stoul(immScaleExpr->getValue()->get_value()) > 8 ||
+                                 std::stoul(immScaleExpr->getValue()->get_value()) == 0) ||
+                                ((std::stoul(immScaleExpr->getValue()->get_value()) &
+                                  (std::stoul(immScaleExpr->getValue()->get_value()) - 1)) != 0))
+                            {
+                                this->_diagMngr->log(
+                                    DiagLevel::ERROR, 0,
+                                    "Invalid memory scale argument, expected a value "
+                                    "of 1, 2, 4 or 8 but got %lu.\n",
+                                    std::stoul(immScaleExpr->getValue()->get_value()));
+                            }
+                        }
+                        AstNode* displacement = memNode->getDisplacement();
+                        if (displacement != nullptr)
+                        {
+                            if (displacement->getAstNodeType() != AstNodeType::Expression)
+                            {
+                                this->_diagMngr->log(
+                                    DiagLevel::ICE, 0,
+                                    "Memory expression displacement was not an expression\n");
+                            }
+                            ExpressionNode* dispExpr =
+                                reinterpret_cast<ExpressionNode*>(displacement);
+                            if (dispExpr->getExprType() != ExpressionNodeType::Immediate)
+                            {
+                                this->_diagMngr->log(
+                                    DiagLevel::WARNING, 0,
+                                    "Invalid memory displacement argument, expected an "
+                                    "immediate but got %lu. This is probably due to constant "
+                                    "folding "
+                                    "not being here.\n",
+                                    (size_t)dispExpr->getExprType());
+                                goto endDisplacement2;
+                            }
+                            ImmediateExpressionNode* immScaleExpr =
+                                reinterpret_cast<ImmediateExpressionNode*>(dispExpr);
+                            if (std::stoul(immScaleExpr->getValue()->get_value()) > UINT32_MAX)
+                            {
+                                this->_diagMngr->log(
+                                    DiagLevel::ERROR, 0,
+                                    "Invalid memory displacement argument, expected a "
+                                    "value less than %lu but got %lu.",
+                                    UINT32_MAX, std::stoul(immScaleExpr->getValue()->get_value()));
+                            }
+                        }
+                    endDisplacement2:
+                        arguments.push_back({ExpressionNodeType::Memory, sizedSize});
+                    }
+                    break;
+                    default:
+                    {
+                        this->_diagMngr->log(
+                            DiagLevel::ICE, 0,
+                            "Unhandled Sema expression node sized third pass with type %lu\n",
+                            (size_t)sizedExprNodeExpr->getExprType());
+                    }
+                    break;
+                    }
+                }
+                break;
+                
                 default:
                 {
                     this->_diagMngr->log(

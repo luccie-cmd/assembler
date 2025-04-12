@@ -204,4 +204,12 @@ void SizedExpressionNode::print(size_t spacing)
     (void)spacing;
     std::printf("TODO: Print sized expression nodes\n");
 }
+size_t SizedExpressionNode::getSize()
+{
+    return this->size;
+}
+ExpressionNode* SizedExpressionNode::getExpr()
+{
+    return this->expr;
+}
 }; // namespace assembler
