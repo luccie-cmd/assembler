@@ -8,9 +8,10 @@
 
 namespace utils
 {
-std::vector<std::string> opcodes   = {"mov", "xor", "call", "jmp", "ret"};
+std::vector<std::string> opcodes   = {"mov", "xor", "call", "jmp", "je", "ret", "cmp"};
 std::vector<std::string> registers = {
     "rax",
+    "rbx",
     "rcx",
     "rdi",
 };
