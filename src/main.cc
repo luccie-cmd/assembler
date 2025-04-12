@@ -2,12 +2,13 @@
 #ifdef COMPILE
 #include <clopts.hh>
 using namespace command_line_options;
-using options = clopts<
-    flag<"--64", "Enable 64 bit compilation">, flag<"--32", "Enable 32 bit compilation">,
-    option<"-o", "File to put the outputs into">,
-    option<"-f", "Output format", values<"bin", "elf32", "elf64">>,
-    positional<"file", "The file whose cont/ents should be parsed", file<>, /*required=*/true>,
-    help<>>;
+using options =
+    clopts<flag<"--64", "Enable 64 bit compilation">, flag<"--32", "Enable 32 bit compilation">,
+           option<"-o", "File to put the outputs into">,
+           option<"-f", "Output format", values<"bin", "elf32", "elf64">>,
+           positional<"file", "The file whose contents should be parsed", file<>,
+                      /*required=*/true>,
+           help<>>;
 #endif
 #include <driver/context.h>
 #include <driver/diag.h>

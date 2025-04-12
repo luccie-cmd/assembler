@@ -3,15 +3,13 @@ Constant propagation for register binary expressions (mov rax, 3; add rax, 5 -> 
 Common subexpression elimination (mov rax, 3; mov rbx, 5; add rax, rbx -> mov rax 8)
 Copy propagation (mov rax, rbx; mov rcx, rax -> mov rcx, rbx)
 DSE (mov [rbx], 0; mov [rbx], 10 -> mov [rbx], 10)
-instcombine (mov rax, 5, mov rax 3 -> mov rax, 8)
-global DCE (removing file locally uncalled blocks)
+DCE (removing file locally uncalled blocks)
 Branch optimization (jmp label1; label1; jmp label2 -> jmp label2)
 Inlining of functions
 CF optimization (cmp rax, rax; je label1; jmp label2 -> jmp label1)
 Combine identical branches (cmp rax, 5; je label1; mov rbx, 0; jmp end; label1; mov rbx, 0; end; -> cmp rax 5; mov rbx, 0)
 Strength reduction (mov rax, 0 -> xor rax, rax. imul rax 4 -> shl rax, 2)
 Tail call optimization (call label1; ret -> jmp label1)
-Branch prediction (Favor likely to be executed branch and place it first)
 DRE (mov rax, 5 and rax is never used again -> remove it)
 
 CF -> Control Flow

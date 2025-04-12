@@ -80,8 +80,8 @@ force_rebuild = False
 if OLD_CONFIG != CONFIG:
     force_rebuild = True
     print("Configuration changed, rebuilding...")
-CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-PIE', '-fno-PIC']
-CONFIG["CFLAGS"] += ["-O0", '-DNDEBUG', '-Xclang']
+CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-PIE', '-fno-PIC', '-fomit-frame-pointer', '-g0']
+CONFIG["CFLAGS"] += ["-O0", '-DNDEBUG']
 CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wno-shadow']
 CONFIG["CXXFLAGS"] = ['-fno-exceptions', '-fno-rtti']
 CONFIG["ASFLAGS"] = ['-felf64']
@@ -124,7 +124,9 @@ if not compareFiles('build.py', '.build-cache/build.py'):
 def removeOptnone(file):
     callCmd(f"sed s/optnone//g {file} > {file}.clean")
     callCmd(f"sed s/noinline//g {file}.clean > {file}.clean2")
-    callCmd(f"mv {file}.clean2 {file}.clean")
+    callCmd(f"sed s/uwtable//g {file}.clean2 > {file}.clean3")
+    callCmd(f"rm -f {file}.clean2") 
+    callCmd(f"mv {file}.clean3 {file}.clean")
 
 
 def checkExtension(file: str, valid_extensions: list[str]):
@@ -180,7 +182,7 @@ def buildCXX(file):
         command = f"rm -f {CONFIG['outDir'][0]}/{file}.unopt.ll.clean"
         if callCmd(command, True)[0] != 0:
             return 1
-        command = f"opt \"{CONFIG['outDir'][0]}/{file}.unopt.ll\" -o \"{CONFIG['outDir'][0]}/{file}.opt.bc\""
+        command = f"opt \"{CONFIG['outDir'][0]}/{file}.unopt.ll\" -o \"{CONFIG['outDir'][0]}/{file}.opt.bc\" --strip-debug --strip-named-metadata"
         passes = [
             'always-inline',
             'attributor',
@@ -209,8 +211,6 @@ def buildCXX(file):
             'pgo-force-function-attrs',
             'pgo-icall-prom',
             'pre-isel-intrinsic-lowering',
-            'pseudo-probe',
-            'pseudo-probe-update',
             'recompute-globalsaa',
             'rel-lookup-table-converter',
             'scc-oz-module-inliner',
@@ -252,7 +252,6 @@ def buildCXX(file):
             'instsimplify',
             'interleaved-access',
             'interleaved-load-combine',
-            'irce',
             'jump-threading',
             'jump-table-to-switch',
             'lcssa',
@@ -270,6 +269,14 @@ def buildCXX(file):
             'lower-invoke',
             'lower-switch',
             'lower-widenable-condition',
+            'mem2reg',
+            'memcpyopt',
+            'mergeicmps',
+            'mergereturn',
+            'nary-reassociate',
+            'newgvn',
+            'partially-inline-libcalls',
+            'pgo-memop-opt'
         ]
         command += " -passes="
         for pass_ in passes:
@@ -327,7 +334,7 @@ def buildNormal(kernel_dir: str) -> bool:
         str_paths = ""
         for incPath in CONFIG["INCPATHS"]:
             str_paths += f" {incPath}"
-        code, _ = callCmd(f"cpp {str_paths} -D_GLIBCXX_HOSTED=1 {file} -o ./tmp.txt", True)
+        code, _ = callCmd(f"cpp {str_paths} -DCOMPILE -D_GLIBCXX_HOSTED=1 {file} -o ./tmp.txt", True)
         if code != 0:
             print(f"CPP failed to pre process {file}")
             exit(code)
@@ -463,7 +470,7 @@ def buildStaticLib(directory, out_file):
         str_paths = ""
         for incPath in CONFIG["INCPATHS"]:
             str_paths += f" {incPath}"
-        code, _ = callCmd(f"cpp {str_paths} -D_GLIBCXX_HOSTED=1 {file} -o ./tmp.txt", True)
+        code, _ = callCmd(f"cpp {str_paths} -DCOMPILE -D_GLIBCXX_HOSTED=1 {file} -o ./tmp.txt", True)
         if code != 0:
             print(f"CPP failed to pre process {file}")
             exit(code)
