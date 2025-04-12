@@ -84,6 +84,7 @@ class VariableExpressionNode : public ExpressionNode
     VariableExpressionNode(Token* value);
     ~VariableExpressionNode();
     void print(size_t spaceOffset);
+    Token* getName();
 
   private:
     Token* _value;

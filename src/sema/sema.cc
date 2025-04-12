@@ -511,25 +511,6 @@ void SemanticAnalyzer::verify()
                     uint8_t         sizedSize         = sizedExpr->getSize();
                     switch (sizedExprNodeExpr->getExprType())
                     {
-                    case ExpressionNodeType::Register:
-                    {
-                        RegisterExpressionNode* regNode =
-                            reinterpret_cast<RegisterExpressionNode*>(sizedExprNodeExpr);
-                        if (std::find(utils::registers.begin(), utils::registers.end(),
-                                      regNode->getRegister()->get_value()) ==
-                            utils::registers.end())
-                        {
-                            this->_diagMngr->log(DiagLevel::ICE, 0,
-                                                 "Invalid register passed trough to Sema.\n");
-                        }
-                        arguments.push_back({ExpressionNodeType::Register, sizedSize});
-                    }
-                    break;
-                    case ExpressionNodeType::Immediate:
-                    {
-                        arguments.push_back({ExpressionNodeType::Immediate, sizedSize});
-                    }
-                    break;
                     case ExpressionNodeType::Memory:
                     {
                         MemoryExpressionNode* memNode =
@@ -645,7 +626,20 @@ void SemanticAnalyzer::verify()
                     }
                 }
                 break;
-                
+                case ExpressionNodeType::Variable:
+                {
+                    VariableExpressionNode* varExprNode =
+                        reinterpret_cast<VariableExpressionNode*>(exprNode);
+                    if (this->_symTable->getSymbolByName(varExprNode->getName()->get_value()) ==
+                        nullptr)
+                    {
+                        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                             "Symbol `%s` not found in current symbol table.\n",
+                                             varExprNode->getName()->get_value().c_str());
+                    }
+                    arguments.push_back({ExpressionNodeType::Variable, 64});
+                }
+                break;
                 default:
                 {
                     this->_diagMngr->log(

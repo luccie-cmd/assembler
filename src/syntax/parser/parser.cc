@@ -89,7 +89,7 @@ AstNode* Parser::parseNode()
     break;
     case TokenType::QWORD:
     {
-        this->parseExpressionSized(8);
+        this->parseExpressionSized(64);
     }
     break;
     case TokenType::LIT_NUMBER:

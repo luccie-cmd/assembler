@@ -53,6 +53,10 @@ void VariableExpressionNode::print(size_t spacing)
     }
     std::printf("- Variable: `%s`\n", this->_value->get_value().c_str());
 }
+Token* VariableExpressionNode::getName()
+{
+    return this->_value;
+}
 ImmediateExpressionNode::ImmediateExpressionNode(Token* value)
     : ExpressionNode(ExpressionNodeType::Immediate)
 {
@@ -206,7 +210,7 @@ void SizedExpressionNode::print(size_t spacing)
 }
 size_t SizedExpressionNode::getSize()
 {
-    return this->size;
+    return this->size * 8;
 }
 ExpressionNode* SizedExpressionNode::getExpr()
 {
