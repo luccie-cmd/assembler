@@ -38,6 +38,7 @@ enum struct TokenType
     EXTERN,
     TYPE,
     SECTION,
+    QWORD,
 };
 class Token
 {

@@ -8,12 +8,12 @@ section .text
 main:
     mov rax, 0
     xor rdi, rdi
-    mov [rdi], 10
-    mov [rdi+1], 10
-    mov [rdi+rcx], 10
-    mov [rdi+rcx*2], 10
-    mov [rdi+rcx*2+10], 10
-    mov [rdi+rcx*2+10*2], 10
+    mov qword [rdi], 10
+    mov qword [rdi+1], 10
+    mov qword [rdi+rcx], 10
+    mov qword [rdi+rcx*2], 10
+    mov qword [rdi+rcx*2+10], 10
+    mov qword [rdi+rcx*2+10*2], 10
     mov rdi, str0
     call hello
     jmp .local

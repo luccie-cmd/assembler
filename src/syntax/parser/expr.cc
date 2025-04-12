@@ -108,6 +108,10 @@ size_t Parser::getPrecedence(TokenType type)
 }
 AstNode* Parser::parseExpression(size_t min_prec)
 {
+    if (this->currentToken->get_type() == TokenType::QWORD)
+    {
+        return this->parseExpressionSized(8);
+    }
     AstNode* lhs = this->parsePrimaryExpression();
     while (this->currentToken->get_type() == TokenType::PLUS ||
            this->currentToken->get_type() == TokenType::MINUS ||
@@ -125,5 +129,11 @@ AstNode* Parser::parseExpression(size_t min_prec)
         lhs          = new BinaryExpressionNode(lhs, operation, rhs);
     }
     return lhs;
+}
+AstNode* Parser::parseExpressionSized(size_t size)
+{
+    this->consume();
+    return new SizedExpressionNode(size,
+                                   reinterpret_cast<ExpressionNode*>(this->parseExpression(0)));
 }
 } // namespace assembler

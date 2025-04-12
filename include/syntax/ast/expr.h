@@ -14,6 +14,7 @@ enum struct ExpressionNodeType
     String,
     Binary,
     Variable,
+    Sized,
 };
 class ExpressionNode : public AstNode
 {
@@ -31,7 +32,7 @@ class RegisterExpressionNode : public ExpressionNode
   public:
     RegisterExpressionNode(Token* _register);
     ~RegisterExpressionNode();
-    void print(size_t spaceOffset);
+    void   print(size_t spaceOffset);
     Token* getRegister();
 
   private:
@@ -42,7 +43,11 @@ class MemoryExpressionNode : public ExpressionNode
   public:
     MemoryExpressionNode(AstNode* base, AstNode* index, AstNode* scale, AstNode* displacement);
     ~MemoryExpressionNode();
-    void print(size_t spaceOffset);
+    void     print(size_t spaceOffset);
+    AstNode* getBase();
+    AstNode* getIndex();
+    AstNode* getScale();
+    AstNode* getDisplacement();
 
   private:
     AstNode* _base;
@@ -55,7 +60,7 @@ class ImmediateExpressionNode : public ExpressionNode
   public:
     ImmediateExpressionNode(Token* value);
     ~ImmediateExpressionNode();
-    void print(size_t spaceOffset);
+    void   print(size_t spaceOffset);
     Token* getValue();
 
   private:
@@ -92,6 +97,17 @@ class StringExpressionNode : public ExpressionNode
 
   private:
     Token* _value;
+};
+class SizedExpressionNode : public ExpressionNode
+{
+  public:
+    SizedExpressionNode(size_t size, ExpressionNode* expr);
+    ~SizedExpressionNode();
+    void print(size_t spaceOffset);
+
+  private:
+    size_t          size;
+    ExpressionNode* expr;
 };
 } // namespace assembler
 

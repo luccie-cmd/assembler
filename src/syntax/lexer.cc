@@ -124,10 +124,8 @@ Token* Lexer::nextToken()
     return ret;
 }
 std::vector<std::pair<std::string, TokenType>> keywords = {
-    {"global", TokenType::GLOBAL},
-    {"extern", TokenType::EXTERN},
-    {"type", TokenType::TYPE},
-    {"section", TokenType::SECTION},
+    {"global", TokenType::GLOBAL},   {"extern", TokenType::EXTERN}, {"type", TokenType::TYPE},
+    {"section", TokenType::SECTION}, {"qword", TokenType::QWORD},
 };
 TokenType getTokenTypeIdentifierKeyword(std::string buffer)
 {

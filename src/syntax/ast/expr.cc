@@ -165,6 +165,22 @@ void MemoryExpressionNode::print(size_t spacing)
         this->_displacement->print(spacing + (SPACING_SIZE * 3));
     }
 }
+AstNode* MemoryExpressionNode::getBase()
+{
+    return this->_base;
+}
+AstNode* MemoryExpressionNode::getIndex()
+{
+    return this->_index;
+}
+AstNode* MemoryExpressionNode::getScale()
+{
+    return this->_scale;
+}
+AstNode* MemoryExpressionNode::getDisplacement()
+{
+    return this->_displacement;
+}
 StringExpressionNode::StringExpressionNode(Token* value)
     : ExpressionNode(ExpressionNodeType::String)
 {
@@ -175,5 +191,17 @@ void StringExpressionNode::print(size_t spacing)
 {
     (void)spacing;
     std::printf("TODO: Print string expression nodes\n");
+}
+SizedExpressionNode::SizedExpressionNode(size_t size, ExpressionNode* expr)
+    : ExpressionNode(ExpressionNodeType::Sized)
+{
+    this->expr = expr;
+    this->size = size;
+}
+SizedExpressionNode::~SizedExpressionNode() {}
+void SizedExpressionNode::print(size_t spacing)
+{
+    (void)spacing;
+    std::printf("TODO: Print sized expression nodes\n");
 }
 }; // namespace assembler
