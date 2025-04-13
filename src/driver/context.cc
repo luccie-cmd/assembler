@@ -1,4 +1,5 @@
 #include <driver/context.h>
+#include <opts/constantFolding.h>
 #include <sema/sema.h>
 #include <syntax/ast/ast.h>
 #include <syntax/lexer.h>
@@ -18,9 +19,15 @@ Context::Context(std::string contents, DiagManager* diagManager, std::string out
 Context::~Context() {}
 void Context::start()
 {
-    Lexer*  lexer  = new Lexer(this->_contents, this->_diagManager);
-    Parser* parser = new Parser(lexer, this->_diagManager);
-    Ast*    ast    = parser->getAst();
+    Lexer*                     lexer         = new Lexer(this->_contents, this->_diagManager);
+    Parser*                    parser        = new Parser(lexer, this->_diagManager);
+    Ast*                       ast           = parser->getAst();
+    opts::ConstantFoldingPass* constFoldPass = new opts::ConstantFoldingPass;
+    std::vector<std::pair<DiagLevel, std::string>> errors = constFoldPass->run(ast->getNodes());
+    for (std::pair<DiagLevel, std::string> err : errors)
+    {
+        this->_diagManager->log(err.first, 0, "%s\n", err.second.c_str());
+    }
     ast->print();
     SemanticAnalyzer* sema = new SemanticAnalyzer(ast, this->_diagManager);
     sema->verify();

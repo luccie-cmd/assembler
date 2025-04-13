@@ -341,12 +341,12 @@ void SemanticAnalyzer::verify()
         }
         break;
         case AstNodeType::Expression:
-        case AstNodeType::Direct:
         case AstNodeType::Instruction:
         {
             nodesToHandle.push_back(node);
         }
         break;
+        case AstNodeType::Direct:
             break;
         default:
         {

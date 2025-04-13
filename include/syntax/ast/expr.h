@@ -44,10 +44,10 @@ class MemoryExpressionNode : public ExpressionNode
     MemoryExpressionNode(AstNode* base, AstNode* index, AstNode* scale, AstNode* displacement);
     ~MemoryExpressionNode();
     void     print(size_t spaceOffset);
-    AstNode* getBase();
-    AstNode* getIndex();
-    AstNode* getScale();
-    AstNode* getDisplacement();
+    AstNode*& getBase();
+    AstNode*& getIndex();
+    AstNode*& getScale();
+    AstNode*& getDisplacement();
 
   private:
     AstNode* _base;
@@ -72,6 +72,9 @@ class BinaryExpressionNode : public ExpressionNode
     BinaryExpressionNode(AstNode* lhs, Token* operation, AstNode* rhs);
     ~BinaryExpressionNode();
     void print(size_t spaceOffset);
+    AstNode* getLhs();
+    Token*   getOperation();
+    AstNode* getRhs();
 
   private:
     AstNode* _lhs;

@@ -14,7 +14,7 @@ void Ast::print()
         node->print(0);
     }
 }
-std::vector<AstNode*> Ast::getNodes()
+std::vector<AstNode*>& Ast::getNodes()
 {
     return this->nodes;
 }

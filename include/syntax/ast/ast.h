@@ -12,7 +12,7 @@ class Ast
     Ast(std::vector<AstNode*> nodes);
     ~Ast();
     void                  print();
-    std::vector<AstNode*> getNodes();
+    std::vector<AstNode*>& getNodes();
 
   private:
     std::vector<AstNode*> nodes;

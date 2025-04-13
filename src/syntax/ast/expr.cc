@@ -113,6 +113,18 @@ void BinaryExpressionNode::print(size_t spacing)
     std::printf("- RHS:\n");
     this->_rhs->print(spacing + (SPACING_SIZE * 2));
 }
+AstNode* BinaryExpressionNode::getLhs()
+{
+    return this->_lhs;
+}
+Token* BinaryExpressionNode::getOperation()
+{
+    return this->_operation;
+}
+AstNode* BinaryExpressionNode::getRhs()
+{
+    return this->_rhs;
+}
 MemoryExpressionNode::MemoryExpressionNode(AstNode* base, AstNode* index, AstNode* scale,
                                            AstNode* displacement)
     : ExpressionNode(ExpressionNodeType::Memory)
@@ -169,19 +181,19 @@ void MemoryExpressionNode::print(size_t spacing)
         this->_displacement->print(spacing + (SPACING_SIZE * 3));
     }
 }
-AstNode* MemoryExpressionNode::getBase()
+AstNode*& MemoryExpressionNode::getBase()
 {
     return this->_base;
 }
-AstNode* MemoryExpressionNode::getIndex()
+AstNode*& MemoryExpressionNode::getIndex()
 {
     return this->_index;
 }
-AstNode* MemoryExpressionNode::getScale()
+AstNode*& MemoryExpressionNode::getScale()
 {
     return this->_scale;
 }
-AstNode* MemoryExpressionNode::getDisplacement()
+AstNode*& MemoryExpressionNode::getDisplacement()
 {
     return this->_displacement;
 }

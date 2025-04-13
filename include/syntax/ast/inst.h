@@ -13,7 +13,7 @@ class InstructionNode : public AstNode
     InstructionNode(Token* mnemonic, std::vector<AstNode*> args);
     ~InstructionNode();
     void                  print(size_t spaceOffset);
-    std::vector<AstNode*> getArgs();
+    std::vector<AstNode*>& getArgs();
 
   private:
     Token*                _mnemonic;

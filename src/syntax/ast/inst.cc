@@ -26,7 +26,7 @@ void InstructionNode::print(size_t spacing)
         node->print(spacing + (SPACING_SIZE * 2));
     }
 }
-std::vector<AstNode*> InstructionNode::getArgs()
+std::vector<AstNode*>& InstructionNode::getArgs()
 {
     return this->_args;
 }
