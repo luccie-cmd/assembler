@@ -13,4 +13,6 @@ main:
 ; section .text
 ; main:
 ;     mov rax, 52
+;     mov rax, [rax+20]
+;     mov rax, qword [rax+rcx*2+20]
 ;     ret

@@ -47,14 +47,12 @@ static std::optional<std::pair<DiagLevel, std::string>> foldExpr(ExpressionNode*
         {
         case '*':
         {
-            std::printf("Folding %lu * %lu\n", lhsVal, rhsVal);
             expr = new ImmediateExpressionNode(
                 new Token(std::to_string(lhsVal * rhsVal), TokenType::LIT_NUMBER));
         }
         break;
         case '+':
         {
-            std::printf("Folding %lu + %lu\n", lhsVal, rhsVal);
             expr = new ImmediateExpressionNode(
                 new Token(std::to_string(lhsVal + rhsVal), TokenType::LIT_NUMBER));
         }
