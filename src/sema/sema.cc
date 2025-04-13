@@ -503,7 +503,8 @@ std::pair<ExpressionNodeType, uint8_t> SemanticAnalyzer::verifyExpression(Expres
     case ExpressionNodeType::Binary:
     {
         this->_diagMngr->log(DiagLevel::ERROR, 0,
-                             "Binary expressions aren't allowed as instruction arguments");
+                             "Binary expressions aren't allowed as instruction arguments. Did you "
+                             "mean to enable constant folding?");
     }
     break;
     default:
