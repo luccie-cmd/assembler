@@ -62,6 +62,7 @@ Token* Lexer::nextToken()
         }
         this->removeWhitespace();
     }
+    this->removeWhitespace();
     if (this->at_eof())
     {
         return new Token("EOF", TokenType::TEOF);
@@ -109,7 +110,17 @@ Token* Lexer::nextToken()
         }
         else if (IsDecimal(this->c))
         {
-            Token* number = this->lexNumber();
+            uint8_t base = 10;
+            if (this->curr < this->data.size())
+            {
+                if (this->c == '0' && this->data.at(this->curr) == 'x')
+                {
+                    base = 16;
+                    this->next_char();
+                    this->next_char();
+                }
+            }
+            Token* number = this->lexNumber(base);
             ret->set_type(number->get_type());
             ret->set_value(number->get_value());
         }
@@ -125,8 +136,8 @@ Token* Lexer::nextToken()
 }
 std::vector<std::pair<std::string, TokenType>> keywords = {
     {"global", TokenType::GLOBAL},   {"extern", TokenType::EXTERN}, {"type", TokenType::TYPE},
-    {"section", TokenType::SECTION}, {"qword", TokenType::QWORD},
-};
+    {"section", TokenType::SECTION}, {"qword", TokenType::QWORD},   {"dword", TokenType::DWORD},
+    {"word", TokenType::WORD},       {"byte", TokenType::BYTE}};
 TokenType getTokenTypeIdentifierKeyword(std::string buffer)
 {
     for (std::pair<std::string, TokenType> keyword : keywords)
@@ -168,11 +179,31 @@ Token* Lexer::lexString()
     TokenType tt = TokenType::LIT_STRING;
     return new Token(buffer, tt);
 }
-Token* Lexer::lexNumber()
+static bool inBase(char c, uint8_t base)
+{
+    if (isascii(c))
+    {
+        c = toupper(c);
+    }
+    if (base > 16)
+        return false;
+    else if (base <= 10)
+    {
+        if (!(c >= '0' && c < ('0' + base)))
+            return false;
+    }
+    else
+    {
+        if (!((c >= '0' && c < ('0' + base)) || (c >= 'A' && c < ('A' + base - 10))))
+            return false;
+    }
+    return true;
+}
+Token* Lexer::lexNumber(uint8_t base)
 {
     std::string buffer(1, this->c);
     this->next_char();
-    while (IsDecimal(this->c))
+    while (inBase(this->c, base))
     {
         buffer.push_back(this->c);
         this->next_char();

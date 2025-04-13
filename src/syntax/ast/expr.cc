@@ -222,7 +222,7 @@ void SizedExpressionNode::print(size_t spacing)
 }
 size_t SizedExpressionNode::getSize()
 {
-    return this->size * 8;
+    return this->size;
 }
 ExpressionNode* SizedExpressionNode::getExpr()
 {

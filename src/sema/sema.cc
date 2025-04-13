@@ -396,11 +396,13 @@ std::pair<ExpressionNodeType, uint8_t> SemanticAnalyzer::verifyExpression(Expres
                                  "Memory expression base was not an expression.\n");
         }
         ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(base);
-        if (baseExpr->getExprType() != ExpressionNodeType::Register)
+        if (baseExpr->getExprType() != ExpressionNodeType::Register &&
+            baseExpr->getExprType() != ExpressionNodeType::Variable)
         {
-            this->_diagMngr->log(DiagLevel::ERROR, 0,
-                                 "Invalid memory base argument, expected register but got %lu.\n",
-                                 (size_t)baseExpr->getExprType());
+            this->_diagMngr->log(
+                DiagLevel::ERROR, 0,
+                "Invalid memory base argument, expected register or a symbol but got %lu.\n",
+                (size_t)baseExpr->getExprType());
         }
         AstNode* index = memNode->getIndex();
         if (index != nullptr)
@@ -541,31 +543,43 @@ void SemanticAnalyzer::verifyInstruction(InstructionNode*& instNode)
     {
         std::pair<ExpressionNodeType, uint8_t> destArg = arguments.at(0);
         std::pair<ExpressionNodeType, uint8_t> srcArg  = arguments.at(1);
+        if (destArg.first == ExpressionNodeType::Immediate)
+        {
+            this->_diagMngr->log(DiagLevel::ERROR, 0, "Destination cannot be an immediate\n");
+        }
+        if (destArg.first == ExpressionNodeType::Binary)
+        {
+            this->_diagMngr->log(DiagLevel::ERROR, 0, "Destination cannot be a binary operation\n");
+        }
         if (destArg.second == srcArg.second && destArg.second != 0)
         {
             instSize = destArg.second;
         }
         else if (destArg.first == ExpressionNodeType::Register)
         {
-            if (srcArg.second > destArg.second)
+            if (srcArg.first == ExpressionNodeType::Immediate)
+            {
+                instSize = destArg.second;
+            }
+            else if (srcArg.first == ExpressionNodeType::Memory && srcArg.second == 0)
+            {
+                instSize = destArg.second;
+            }
+            else if (srcArg.second > destArg.second)
             {
                 this->_diagMngr->log(DiagLevel::ERROR, 0,
                                      "Invalid instruction sizes specified, source size is greater "
                                      "than the destination size\n");
-            }
-            else if (srcArg.first == ExpressionNodeType::Immediate)
-            {
-                instSize = destArg.second;
-            }
-            else if (srcArg.first == ExpressionNodeType::Memory)
-            {
-                instSize = destArg.second;
             }
             else if (srcArg.second < destArg.second)
             {
                 this->_diagMngr->log(DiagLevel::ERROR, 0,
                                      "Invalid instruction sizes specified, source size is smaller "
                                      "than the destination size\n");
+            }
+            else if (srcArg.first == ExpressionNodeType::Memory)
+            {
+                instSize = destArg.second;
             }
             else
             {
@@ -585,22 +599,76 @@ void SemanticAnalyzer::verifyInstruction(InstructionNode*& instNode)
             {
                 instSize = destArg.second;
             }
+            else
+            {
+                std::printf(
+                    "TODO: destArg.first == ExpressionNodeType::Memory && destArg.second != 0\n");
+            }
         }
-        else if (srcArg.first == ExpressionNodeType::Register)
+        else if (destArg.first == ExpressionNodeType::Memory)
         {
-            std::printf("TODO: srcArg.first == ExpressionNodeType::Register\n");
-            std::exit(1);
+            if (srcArg.first == ExpressionNodeType::Memory)
+            {
+                this->_diagMngr->log(
+                    DiagLevel::ERROR, 0,
+                    "Cannot have both the destination and source as memory addresses\n");
+            }
+            else if (srcArg.first == ExpressionNodeType::Immediate)
+            {
+                instSize = srcArg.second;
+            }
+            else if (srcArg.first == ExpressionNodeType::Register)
+            {
+                instSize = srcArg.second;
+            }
+            else
+            {
+                std::printf("TODO: destArg.first == ExpressionNodeType::Memory\n");
+            }
         }
-        else if (srcArg.first == ExpressionNodeType::Memory)
-        {
-            std::printf("TODO: srcArg.first == ExpressionNodeType::Memory\n");
-            std::exit(1);
-        }
+        // else if (srcArg.first == ExpressionNodeType::Register)
+        // {
+        //     if (destArg.first == ExpressionNodeType::Immediate)
+        //     {
+        //         instSize = srcArg.second;
+        //     }
+        //     else if (destArg.second > srcArg.second)
+        //     {
+        //         this->_diagMngr->log(
+        //             DiagLevel::ERROR, 0,
+        //             "Invalid instruction sizes specified, destination size is greater "
+        //             "than the source size\n");
+        //     }
+        //     else if (destArg.second < srcArg.second)
+        //     {
+        //         this->_diagMngr->log(
+        //             DiagLevel::ERROR, 0,
+        //             "Invalid instruction sizes specified, destination size is smaller "
+        //             "than the source size\n");
+        //     }
+        //     else if (destArg.first == ExpressionNodeType::Memory)
+        //     {
+        //         instSize = srcArg.second;
+        //     }
+        //     else
+        //     {
+        //         std::printf("TODO: destArg.first == ExpressionNodeType::Register\n");
+        //         std::exit(1);
+        //     }
+        // }
+        // else if (srcArg.first == ExpressionNodeType::Memory && srcArg.second != 0)
+        // {
+        //     std::printf("TODO: srcArg.first == ExpressionNodeType::Memory\n");
+        //     std::exit(1);
+        // }
         else
         {
             this->_diagMngr->log(DiagLevel::ERROR, 0,
-                                 "Could not figure out instruction size for instruction `%s`\n",
-                                 instNode->getMnemonic()->get_value().c_str());
+                                 "Could not figure out instruction size for instruction `%s` "
+                                 "(Operands were {%lu, %hhu} and {%lu, %hhu}\n",
+                                 instNode->getMnemonic()->get_value().c_str(),
+                                 (size_t)destArg.first, destArg.second, (size_t)srcArg.first,
+                                 srcArg.second);
         }
     }
     else if (arguments.size() == 1)

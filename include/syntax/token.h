@@ -39,6 +39,9 @@ enum struct TokenType
     TYPE,
     SECTION,
     QWORD,
+    DWORD,
+    WORD,
+    BYTE,
 };
 class Token
 {

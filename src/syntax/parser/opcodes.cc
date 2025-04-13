@@ -8,12 +8,15 @@
 
 namespace utils
 {
-std::vector<std::string> opcodes   = {"mov", "xor", "call", "jmp", "je", "ret", "cmp"};
+std::vector<std::string> opcodes   = {"mov", "xor",  "call", "jmp", "je",    "jl",  "ret",
+                                      "cmp", "push", "add",  "shl", "cmove", "pop", "inc"};
 std::vector<std::string> registers = {
-    "rax",
-    "rbx",
-    "rcx",
-    "rdi",
+    "rax", "eax",  "ax",   "al",   "ah",  "rbx",  "ebx",  "bx",   "bl",  "bh",   "rcx",  "ecx",
+    "cx",  "cl",   "ch",   "rdx",  "edx", "dx",   "dl",   "dh",   "rdi", "edi",  "di",   "dil",
+    "rsi", "esi",  "si",   "sil",  "rbp", "ebp",  "bp",   "bpl",  "rsp", "esp",  "sp",   "spl",
+    "r8",  "r8d",  "r8w",  "r8b",  "r9",  "r9d",  "r9w",  "r9b",  "r10", "r10d", "r10w", "r10b",
+    "r11", "r11d", "r11w", "r11b", "r12", "r12d", "r12w", "r12b", "r13", "r13d", "r13w", "r13b",
+    "r14", "r14d", "r14w", "r14b", "r15", "r15d", "r15w", "r15b",
 };
 bool takesArgument(std::string opcode)
 {
@@ -43,6 +46,10 @@ uint8_t getRegisterSize(std::string reg)
         if (reg.ends_with("d"))
             return 32;
         return 64;
+    }
+    if (reg.starts_with("e"))
+    {
+        return 32;
     }
     std::printf("ICE: Invalid register `%s` brought to getRegisterSize. Sema do better.",
                 reg.c_str());

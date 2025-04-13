@@ -20,16 +20,16 @@ void InstructionNode::print(size_t spacing)
     {
         std::putchar(' ');
     }
+    std::printf("- Instruction size: %hhu\n", this->_instSize);
+    for (size_t i = 0; i < spacing + SPACING_SIZE; ++i)
+    {
+        std::putchar(' ');
+    }
     std::printf("- Arguments:\n");
     for (AstNode* node : this->_args)
     {
         node->print(spacing + (SPACING_SIZE * 2));
     }
-    for (size_t i = 0; i < spacing + SPACING_SIZE; ++i)
-    {
-        std::putchar(' ');
-    }
-    std::printf("- Instruction size: %hhu\n", this->_instSize);
 }
 std::vector<AstNode*>& InstructionNode::getArgs()
 {

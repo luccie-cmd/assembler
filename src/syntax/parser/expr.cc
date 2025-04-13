@@ -110,6 +110,18 @@ AstNode* Parser::parseExpression(size_t min_prec)
 {
     if (this->currentToken->get_type() == TokenType::QWORD)
     {
+        return this->parseExpressionSized(64);
+    }
+    else if (this->currentToken->get_type() == TokenType::DWORD)
+    {
+        return this->parseExpressionSized(32);
+    }
+    else if (this->currentToken->get_type() == TokenType::WORD)
+    {
+        return this->parseExpressionSized(16);
+    }
+    else if (this->currentToken->get_type() == TokenType::BYTE)
+    {
         return this->parseExpressionSized(8);
     }
     AstNode* lhs = this->parsePrimaryExpression();

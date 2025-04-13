@@ -29,7 +29,7 @@ class Lexer
     Token*              nextToken();
     Token*              lexIdentifierOrKeyword();
     Token*              lexString();
-    Token*              lexNumber();
+    Token*              lexNumber(uint8_t base);
     std::vector<Token*> lexAllTokens();
 
   private:

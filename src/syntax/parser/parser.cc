@@ -87,11 +87,6 @@ AstNode* Parser::parseNode()
         return this->parseDeclaration();
     }
     break;
-    case TokenType::QWORD:
-    {
-        this->parseExpressionSized(64);
-    }
-    break;
     case TokenType::LIT_NUMBER:
     {
         return this->parseExpression(0);
@@ -123,6 +118,11 @@ AstNode* Parser::parseNode()
                 this->currentToken->get_value() == "dd" || this->currentToken->get_value() == "dq")
             {
                 return this->parseDirectBytes();
+            }
+            else if (std::find(utils::registers.begin(), utils::registers.end(),
+                               this->currentToken->get_value()) != utils::registers.end())
+            {
+                return this->parseExpression(0);
             }
             return this->parseInstruction();
         }
