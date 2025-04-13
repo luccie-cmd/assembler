@@ -18,10 +18,11 @@ Context::Context(std::string contents, DiagManager* diagManager, std::string out
 Context::~Context() {}
 void Context::start()
 {
-    Lexer*            lexer  = new Lexer(this->_contents, this->_diagManager);
-    Parser*           parser = new Parser(lexer, this->_diagManager);
-    Ast*              ast    = parser->getAst();
-    SemanticAnalyzer* sema   = new SemanticAnalyzer(ast, this->_diagManager);
+    Lexer*  lexer  = new Lexer(this->_contents, this->_diagManager);
+    Parser* parser = new Parser(lexer, this->_diagManager);
+    Ast*    ast    = parser->getAst();
+    ast->print();
+    SemanticAnalyzer* sema = new SemanticAnalyzer(ast, this->_diagManager);
     sema->verify();
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is lirgen)\n");

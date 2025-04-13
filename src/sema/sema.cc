@@ -245,6 +245,7 @@ void SemanticAnalyzer::verify()
             }
         }
         break;
+        case AstNodeType::Expression:
         case AstNodeType::Direct:
         case AstNodeType::Instruction:
             break;
@@ -344,6 +345,7 @@ void SemanticAnalyzer::verify()
             nodesToHandle.push_back(node);
         }
         break;
+        case AstNodeType::Expression:
         case AstNodeType::Direct:
             break;
         default:
@@ -481,10 +483,9 @@ void SemanticAnalyzer::verify()
                         if (dispExpr->getExprType() != ExpressionNodeType::Immediate)
                         {
                             this->_diagMngr->log(
-                                DiagLevel::WARNING, 0,
+                                DiagLevel::ERROR, 0,
                                 "Invalid memory displacement argument, expected an "
-                                "immediate but got %lu. This is probably due to constant folding "
-                                "not being here.\n",
+                                "immediate but got %lu. Did you mean to enable constant folding?\n",
                                 (size_t)dispExpr->getExprType());
                             goto endDisplacement;
                         }
@@ -592,11 +593,10 @@ void SemanticAnalyzer::verify()
                             if (dispExpr->getExprType() != ExpressionNodeType::Immediate)
                             {
                                 this->_diagMngr->log(
-                                    DiagLevel::WARNING, 0,
+                                    DiagLevel::ERROR, 0,
                                     "Invalid memory displacement argument, expected an "
-                                    "immediate but got %lu. This is probably due to constant "
-                                    "folding "
-                                    "not being here.\n",
+                                    "immediate but got %lu. Did you mean to enable constant "
+                                    "folding?\n",
                                     (size_t)dispExpr->getExprType());
                                 goto endDisplacement2;
                             }
@@ -638,6 +638,13 @@ void SemanticAnalyzer::verify()
                                              varExprNode->getName()->get_value().c_str());
                     }
                     arguments.push_back({ExpressionNodeType::Variable, 64});
+                }
+                break;
+                case ExpressionNodeType::Binary:
+                {
+                    this->_diagMngr->log(
+                        DiagLevel::ERROR, 0,
+                        "Binary expressions aren't allowed as instruction arguments");
                 }
                 break;
                 default:
