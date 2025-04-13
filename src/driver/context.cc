@@ -28,9 +28,9 @@ void Context::start()
     {
         this->_diagManager->log(err.first, 0, "%s\n", err.second.c_str());
     }
-    ast->print();
     SemanticAnalyzer* sema = new SemanticAnalyzer(ast, this->_diagManager);
     sema->verify();
+    ast->print();
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is lirgen)\n");
 }
