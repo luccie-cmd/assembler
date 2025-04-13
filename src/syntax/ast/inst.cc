@@ -25,9 +25,22 @@ void InstructionNode::print(size_t spacing)
     {
         node->print(spacing + (SPACING_SIZE * 2));
     }
+    for (size_t i = 0; i < spacing + SPACING_SIZE; ++i)
+    {
+        std::putchar(' ');
+    }
+    std::printf("- Instruction size: %hhu\n", this->_instSize);
 }
 std::vector<AstNode*>& InstructionNode::getArgs()
 {
     return this->_args;
+}
+Token* InstructionNode::getMnemonic()
+{
+    return this->_mnemonic;
+}
+void InstructionNode::setInstSize(uint8_t instSize)
+{
+    this->_instSize = instSize;
 }
 }; // namespace assembler

@@ -517,7 +517,7 @@ std::pair<ExpressionNodeType, uint8_t> SemanticAnalyzer::verifyExpression(Expres
     }
     __builtin_unreachable();
 }
-void SemanticAnalyzer::verifyInstruction(InstructionNode* instNode)
+void SemanticAnalyzer::verifyInstruction(InstructionNode*& instNode)
 {
     // TODO: Verify argument count
     std::vector<std::pair<ExpressionNodeType, uint8_t>> arguments;
@@ -530,10 +530,99 @@ void SemanticAnalyzer::verifyInstruction(InstructionNode* instNode)
         ExpressionNode* exprNode = reinterpret_cast<ExpressionNode*>(arg);
         arguments.push_back(this->verifyExpression(exprNode));
     }
+    if (arguments.size() > 2)
+    {
+        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                             "Too many arguments specified for instruction `%s`\n",
+                             instNode->getMnemonic()->get_value().c_str());
+    }
+    uint8_t instSize = 0;
+    if (arguments.size() == 2)
+    {
+        std::pair<ExpressionNodeType, uint8_t> destArg = arguments.at(0);
+        std::pair<ExpressionNodeType, uint8_t> srcArg  = arguments.at(1);
+        if (destArg.second == srcArg.second && destArg.second != 0)
+        {
+            instSize = destArg.second;
+        }
+        else if (destArg.first == ExpressionNodeType::Register)
+        {
+            if (srcArg.second > destArg.second)
+            {
+                this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                     "Invalid instruction sizes specified, source size is greater "
+                                     "than the destination size\n");
+            }
+            else if (srcArg.first == ExpressionNodeType::Immediate)
+            {
+                instSize = destArg.second;
+            }
+            else if (srcArg.first == ExpressionNodeType::Memory)
+            {
+                instSize = destArg.second;
+            }
+            else if (srcArg.second < destArg.second)
+            {
+                this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                     "Invalid instruction sizes specified, source size is smaller "
+                                     "than the destination size\n");
+            }
+            else
+            {
+                std::printf("TODO: destArg.first == ExpressionNodeType::Register\n");
+                std::exit(1);
+            }
+        }
+        else if (destArg.first == ExpressionNodeType::Memory && destArg.second != 0)
+        {
+            if (srcArg.first == ExpressionNodeType::Memory)
+            {
+                this->_diagMngr->log(
+                    DiagLevel::ERROR, 0,
+                    "Cannot have both the destination and source as memory addresses\n");
+            }
+            else if (srcArg.first == ExpressionNodeType::Immediate)
+            {
+                instSize = destArg.second;
+            }
+        }
+        else if (srcArg.first == ExpressionNodeType::Register)
+        {
+            std::printf("TODO: srcArg.first == ExpressionNodeType::Register\n");
+            std::exit(1);
+        }
+        else if (srcArg.first == ExpressionNodeType::Memory)
+        {
+            std::printf("TODO: srcArg.first == ExpressionNodeType::Memory\n");
+            std::exit(1);
+        }
+        else
+        {
+            this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                 "Could not figure out instruction size for instruction `%s`\n",
+                                 instNode->getMnemonic()->get_value().c_str());
+        }
+    }
+    else if (arguments.size() == 1)
+    {
+        instSize = arguments.at(0).second;
+    }
+    else if (arguments.size() == 0)
+    {
+        instSize = 0;
+    }
+    else
+    {
+        this->_diagMngr->log(
+            DiagLevel::ICE, 0,
+            "Instruction size couldn't be found due to unhandled argument count of %llu\n",
+            arguments.size());
+    }
+    instNode->setInstSize(instSize);
 }
 void SemanticAnalyzer::thirdPass()
 {
-    for (AstNode* node : _toHandleNodes)
+    for (AstNode*& node : _toHandleNodes)
     {
         switch (node->getAstNodeType())
         {

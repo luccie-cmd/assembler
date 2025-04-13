@@ -65,7 +65,7 @@ class SemanticAnalyzer
     void                                   verifySectionDecl(SectionDeclarationNode* sectionDecl);
     void                                   verifyLabelDecl(LabelDeclarationNode* labelDeclNode);
     void                                   verifyTypeDecl(TypeDeclarationNode* typeDeclNode);
-    void                                   verifyInstruction(InstructionNode* instNode);
+    void                                   verifyInstruction(InstructionNode*& instNode);
     std::pair<ExpressionNodeType, uint8_t> verifyExpression(ExpressionNode* exprNode);
     void                                   verifyDeclaration(DeclarationNode* declNode);
     void                                   firstPass();
