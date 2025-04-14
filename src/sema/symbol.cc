@@ -1,0 +1,64 @@
+#include <sema/symbol.h>
+
+namespace assembler
+{
+SymbolTable::SymbolTable()
+{
+    this->_symbols.clear();
+}
+SymbolTable::~SymbolTable()
+{
+    for (Symbol* sym : this->_symbols)
+    {
+        delete sym;
+    }
+    this->_symbols.clear();
+}
+void SymbolTable::pushSymbol(Symbol* sym)
+{
+    this->_symbols.push_back(sym);
+}
+Symbol* SymbolTable::getSymbolByName(std::string name)
+{
+    for (Symbol* sym : this->_symbols)
+    {
+        if (sym->getName() == name)
+        {
+            return sym;
+        }
+    }
+    return nullptr;
+}
+Symbol::Symbol(SymbolBinding symbolBind, std::string name, bool isDefinedByLabel)
+{
+    this->symbolBind       = symbolBind;
+    this->symbolKind       = SymbolKind::Unset;
+    this->name             = name;
+    this->isDefinedByLabel = isDefinedByLabel;
+}
+Symbol::~Symbol() {}
+std::string Symbol::getName()
+{
+    return this->name;
+}
+SymbolKind Symbol::getSymbolKind()
+{
+    return this->symbolKind;
+}
+SymbolBinding Symbol::getSymbolBind()
+{
+    return this->symbolBind;
+}
+bool Symbol::getIsDefinedByLabel()
+{
+    return this->isDefinedByLabel;
+}
+void Symbol::setSymbolKind(SymbolKind kind)
+{
+    this->symbolKind = kind;
+}
+void Symbol::setIsDefinedByLabel(bool isDefinedByLabel)
+{
+    this->isDefinedByLabel = isDefinedByLabel;
+}
+}; // namespace assembler
