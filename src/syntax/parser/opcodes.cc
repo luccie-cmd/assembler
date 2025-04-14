@@ -55,6 +55,13 @@ uint8_t getRegisterSize(std::string reg)
                 reg.c_str());
     std::exit(1);
 }
+bool getBranchInstruction(std::string mnemonic)
+{
+    static std::vector<std::string> branchInsts = {
+        "jmp", "call", "je", "jl", "jg", "jle", "jge", "jne",
+    };
+    return std::find(branchInsts.begin(), branchInsts.end(), mnemonic) != branchInsts.end();
+}
 } // namespace utils
 
 #endif

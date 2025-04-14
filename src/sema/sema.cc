@@ -10,6 +10,7 @@ namespace utils
 {
 extern std::vector<std::string> registers;
 uint8_t                         getRegisterSize(std::string reg);
+bool                            getBranchInstruction(std::string mnemonic);
 } // namespace utils
 
 namespace assembler
@@ -660,6 +661,29 @@ void SemanticAnalyzer::verifyInstruction(InstructionNode*& instNode)
             arguments.size());
     }
     instNode->setInstSize(instSize);
+    if (utils::getBranchInstruction(instNode->getMnemonic()->get_value()))
+    {
+        if (arguments.size() != 1)
+        {
+            this->_diagMngr->log(
+                DiagLevel::ERROR, 0,
+                "Malformed branch instruction, expected 1 argument but got %lu arguments\n",
+                arguments.size());
+        }
+        Symbol* arg = this->_symTable->getSymbolByName(
+            reinterpret_cast<VariableExpressionNode*>(
+                reinterpret_cast<ExpressionNode*>(instNode->getArgs().at(0)))
+                ->getName()
+                ->get_value());
+        if (arguments.at(0).first != ExpressionNodeType::Register &&
+            arg->getSymbolKind() != SymbolKind::Function)
+        {
+            this->_diagMngr->log(
+                DiagLevel::ERROR, 0,
+                "Malformed branch instruction, expected function argument but got %lu (%lu)\n",
+                (size_t)arguments.at(0).first, (size_t)arg->getSymbolKind());
+        }
+    }
 }
 void SemanticAnalyzer::thirdPass()
 {
