@@ -24,6 +24,7 @@ main:
     mov byte [rdi+rcx*2], r8b
     mov [rdi+rcx*2+10], r8w
     mov rdi, str0
+.local2:
     call hello
     jmp .local
 .local: ; test local labels

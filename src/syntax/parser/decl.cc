@@ -62,6 +62,23 @@ AstNode* Parser::parseDeclaration()
 AstNode* Parser::parseLabelDecl()
 {
     Token* identifier = this->expect(true, TokenType::IDENTIFIER);
+    if (this->currentLabelDefinition == nullptr && !identifier->get_value().starts_with("."))
+    {
+        this->currentLabelDefinition = identifier;
+    }
+    else
+    {
+        std::string newName = identifier->get_value();
+        if (!identifier->get_value().starts_with("."))
+        {
+            this->currentLabelDefinition = nullptr;
+        }
+        else
+        {
+            newName = this->currentLabelDefinition->get_value() + identifier->get_value();
+        }
+        identifier->set_value(newName);
+    }
     this->expect(true, TokenType::COLON);
     return new LabelDeclarationNode(identifier);
 }

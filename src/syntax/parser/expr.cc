@@ -64,7 +64,13 @@ AstNode* Parser::parsePrimaryExpression()
         }
         else
         {
-            return new VariableExpressionNode(this->consume());
+            Token* identifier = this->consume();
+            if (this->currentLabelDefinition != nullptr && identifier->get_value().at(0) == '.')
+            {
+                identifier->set_value(this->currentLabelDefinition->get_value() +
+                                      identifier->get_value());
+            }
+            return new VariableExpressionNode(identifier);
         }
     }
     break;

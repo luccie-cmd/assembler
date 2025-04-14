@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdint>
+#include <ranges>
 #include <sema/sema.h>
 #include <syntax/ast/decl.h>
 #include <syntax/ast/expr.h>
@@ -119,9 +120,18 @@ void SemanticAnalyzer::verifySectionDecl(SectionDeclarationNode* sectionDecl)
         }
     }
     Symbol* newSymbol =
-        new Symbol(SymbolBinding::Global, sectionDecl->getName()->get_value().c_str(), false);
+        new Symbol(SymbolBinding::Local, sectionDecl->getName()->get_value().c_str(), false);
     newSymbol->setSymbolKind(SymbolKind::Section);
     this->_symTable->pushSymbol(newSymbol);
+}
+std::string getParent(const std::string input)
+{
+    auto dot_pos = input.find('.');
+    if (dot_pos == std::string::npos)
+    {
+        return ""; // No parent
+    }
+    return input.substr(0, dot_pos);
 }
 void SemanticAnalyzer::verifyLabelDecl(LabelDeclarationNode* labelDeclNode)
 {
@@ -138,12 +148,25 @@ void SemanticAnalyzer::verifyLabelDecl(LabelDeclarationNode* labelDeclNode)
     if (checkSymbol == nullptr)
     {
         Symbol* newSymbol =
-            new Symbol(SymbolBinding::Global, labelDeclNode->getName()->get_value().c_str(), true);
+            new Symbol(SymbolBinding::Local, labelDeclNode->getName()->get_value().c_str(), true);
         newSymbol->setSymbolKind(SymbolKind::Unknown);
         this->_symTable->pushSymbol(newSymbol);
     }
     checkSymbol = this->_symTable->getSymbolByName(labelDeclNode->getName()->get_value());
     checkSymbol->setIsDefinedByLabel(true);
+    std::string parent = getParent(labelDeclNode->getName()->get_value());
+    if (!parent.empty())
+    {
+        Symbol* parentSymbol = this->_symTable->getSymbolByName(parent);
+        if (parentSymbol == nullptr)
+        {
+            this->_diagMngr->log(
+                DiagLevel::ERROR, 0,
+                "Attempted to inherit parent symbol type but parent symbol `%s` not found\n",
+                parent.c_str());
+        }
+        checkSymbol->setSymbolKind(parentSymbol->getSymbolKind());
+    }
 }
 void SemanticAnalyzer::verifyTypeDecl(TypeDeclarationNode* typeDeclNode)
 {
@@ -197,6 +220,16 @@ void SemanticAnalyzer::verifyTypeDecl(TypeDeclarationNode* typeDeclNode)
         }
     }
     symbol->setSymbolKind(symKind);
+    // Set child nodes
+    for (Symbol* childSymbol : this->_symTable->getSymbols())
+    {
+        if (childSymbol->getName().starts_with(symbol->getName()) &&
+            childSymbol->getName().size() > symbol->getName().size() &&
+            childSymbol->getName().at(symbol->getName().size()) == '.')
+        {
+            childSymbol->setSymbolKind(symKind);
+        }
+    }
 }
 void SemanticAnalyzer::verifyDeclaration(DeclarationNode* declNode)
 {
@@ -656,9 +689,6 @@ void SemanticAnalyzer::verify()
     this->secondPass();
     for (Symbol* sym : this->_symTable->getSymbols())
     {
-        this->_diagMngr->log(DiagLevel::NOTE, 0, "%s %lu %lu %s\n", sym->getName().c_str(),
-                             sym->getSymbolKind(), sym->getSymbolBind(),
-                             sym->getIsDefinedByLabel() ? "true" : "false");
         if (sym->getSymbolKind() == SymbolKind::Unset ||
             sym->getSymbolKind() == SymbolKind::Unknown)
         {

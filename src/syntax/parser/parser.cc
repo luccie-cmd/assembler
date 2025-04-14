@@ -8,6 +8,7 @@ Parser::Parser(Lexer* lexer, DiagManager* diagMngr)
     this->_lexer    = lexer;
     this->_diagMngr = diagMngr;
     this->consume();
+    this->currentLabelDefinition = nullptr;
 }
 Parser::~Parser() {}
 Token* Parser::consume()

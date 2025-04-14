@@ -30,7 +30,7 @@ void Context::start()
     }
     SemanticAnalyzer* sema = new SemanticAnalyzer(ast, this->_diagManager);
     sema->verify();
-    ast->print();
+    // ast->print();
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is lirgen)\n");
 }

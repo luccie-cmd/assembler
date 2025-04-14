@@ -138,19 +138,173 @@ def checkExtension(file: str, valid_extensions: list[str]):
 def getExtension(file):
     return file.split(".")[-1]
 
+optPasses = [
+    'always-inline',
+    'attributor',
+    'called-value-propagation',
+    'canonicalize-aliases',
+    'constmerge',
+    'coro-cleanup',
+    'coro-early',
+    'cross-dso-cfi',
+    'deadargelim',
+    'elim-avail-extern',
+    'extract-blocks',
+    'expand-variadics',
+    'forceattrs',
+    'globalopt',
+    'globalsplit',
+    'hotcoldsplit',
+    'inferattrs',
+    'inliner-wrapper',
+    'inliner-wrapper-no-mandatory-first',
+    'instrprof',
+    'iroutliner',
+    'mergefunc',
+    'module-inline',
+    'partial-inliner',
+    'pgo-force-function-attrs',
+    'pgo-icall-prom',
+    'pre-isel-intrinsic-lowering',
+    'recompute-globalsaa',
+    'rel-lookup-table-converter',
+    'scc-oz-module-inliner',
+    'synthetic-counts-propagation',
+    'wholeprogramdevirt',
+    'loop-extract',
+    'ipsccp',
+    'globaldce',
+    'argpromotion',
+    'attributor-cgscc',
+    'coro-split',
+    'function-attrs',
+    'inline',
+    'adce',
+    'aggressive-instcombine',
+    'alignment-from-assumptions',
+    'assume-builder',
+    'assume-simplify',
+    'bdce',
+    'callsite-splitting',
+    'codegenprepare',
+    'consthoist',
+    'constraint-elimination',
+    'coro-elide',
+    'correlated-propagation',
+    'dce',
+    'declare-to-assign',
+    'dfa-jump-threading',
+    'div-rem-pairs',
+    'dse',
+    'expand-memcmp',
+    'fix-irreducible',
+    'flatten-cfg',
+    'guard-widening',
+    'gvn-hoist',
+    'gvn-sink',
+    'indirectbr-expand',
+    'infer-alignment',
+    'instsimplify',
+    'interleaved-access',
+    'interleaved-load-combine',
+    'jump-threading',
+    'jump-table-to-switch',
+    'lcssa',
+    'libcalls-shrinkwrap',
+    'load-store-vectorizer',
+    'loop-data-prefetch',
+    'loop-distribute',
+    'loop-fusion',
+    'loop-load-elim',
+    'loop-simplify',
+    'loop-sink',
+    'loop-versioning',
+    'lower-constant-intrinsics',
+    'lower-expect',
+    'lower-invoke',
+    'lower-switch',
+    'lower-widenable-condition',
+    'mem2reg',
+    'memcpyopt',
+    'mergeicmps',
+    'mergereturn',
+    'nary-reassociate',
+    'newgvn',
+    'partially-inline-libcalls',
+    'pgo-memop-opt',
+    'reassociate',
+    'scalarize-masked-mem-intrin',
+    'sccp',
+    'select-optimize',
+    'separate-const-offset-from-gep',
+    'sink',
+    'slp-vectorizer',
+    'slsr',
+    'tailcallelim',
+    'tlshoist',
+    'typepromotion',
+    'vector-combine',
+    'early-cse',
+    'loop-flatten',
+    'loop-interchange',
+    'loop-unroll-and-jam',
+    'canon-freeze',
+    'indvars',
+    'loop-bound-split',
+    'loop-deletion',
+    'loop-idiom',
+    'loop-idiom-vectorize',
+    'loop-instsimplify',
+    'loop-predication',
+    'loop-reduce',
+    'loop-simplifycfg',
+    'loop-unroll-full',
+    'loop-versioning-licm',
+]
+
 def buildC(file):
     compiler = CONFIG.get("compiler")[0]
     options = CONFIG["CFLAGS"].copy()
-    print("main.c" in file)
     if "main.c" in file and "yes" in CONFIG.get("analyzer"):
         options.remove("-fanalyzer")
     options.append("-std=c11")
     command = compiler + " " + file
     for option in options:
         command += " " + option
-    print(f"C     {file}")
-    command += f" -o {CONFIG['outDir'][0]}/{file}.o"
-    return callCmd(command, True)[0]
+    if compiler == "g++":
+        print(f"CXX   {file}")
+        command += f" -o {CONFIG['outDir'][0]}/{file}.o"
+        return callCmd(command, True)[0]
+    else:
+        command += ' -S -emit-llvm'
+        command += f" -o {CONFIG['outDir'][0]}/{file}.unopt.ll"
+        print(f"CLANG {file}")
+        if callCmd(command, True)[0] != 0:
+            return 1
+        removeOptnone(f"{CONFIG['outDir'][0]}/{file}.unopt.ll")
+        command = f"mv {CONFIG['outDir'][0]}/{file}.unopt.ll.clean {CONFIG['outDir'][0]}/{file}.unopt.ll"
+        if callCmd(command, True)[0] != 0:
+            return 1
+        command = f"rm -f {CONFIG['outDir'][0]}/{file}.unopt.ll.clean"
+        if callCmd(command, True)[0] != 0:
+            return 1
+        command = f"opt \"{CONFIG['outDir'][0]}/{file}.unopt.ll\" -o \"{CONFIG['outDir'][0]}/{file}.opt.bc\" --strip-debug --strip-named-metadata"
+        command += " -passes="
+        for pass_ in optPasses:
+            command += f"{pass_}"
+            if pass_ != optPasses[-1]:
+                command += ','
+        print(f"OPT   {file}")
+        code = callCmd(command, True)[0]
+        if code != 0:
+            return code
+        command = f"llvm-dis {CONFIG['outDir'][0]}/{file}.opt.bc -o {CONFIG['outDir'][0]}/{file}.opt.ll"
+        if callCmd(command, True)[0] != 0:
+            return 1
+        command = f"llc {CONFIG['outDir'][0]}/{file}.opt.ll -o {CONFIG['outDir'][0]}/{file}.opt.asm --filetype=asm --x86-asm-syntax=intel"
+        if callCmd(command, True)[0] != 0:
+            return 1
+        return code
 
 def buildCXX(file):
     compiler = CONFIG.get("compiler")[0]
@@ -183,133 +337,10 @@ def buildCXX(file):
         if callCmd(command, True)[0] != 0:
             return 1
         command = f"opt \"{CONFIG['outDir'][0]}/{file}.unopt.ll\" -o \"{CONFIG['outDir'][0]}/{file}.opt.bc\" --strip-debug --strip-named-metadata"
-        passes = [
-            'always-inline',
-            'attributor',
-            'called-value-propagation',
-            'canonicalize-aliases',
-            'constmerge',
-            'coro-cleanup',
-            'coro-early',
-            'cross-dso-cfi',
-            'deadargelim',
-            'elim-avail-extern',
-            'extract-blocks',
-            'expand-variadics',
-            'forceattrs',
-            'globalopt',
-            'globalsplit',
-            'hotcoldsplit',
-            'inferattrs',
-            'inliner-wrapper',
-            'inliner-wrapper-no-mandatory-first',
-            'instrprof',
-            'iroutliner',
-            'mergefunc',
-            'module-inline',
-            'partial-inliner',
-            'pgo-force-function-attrs',
-            'pgo-icall-prom',
-            'pre-isel-intrinsic-lowering',
-            'recompute-globalsaa',
-            'rel-lookup-table-converter',
-            'scc-oz-module-inliner',
-            'synthetic-counts-propagation',
-            'wholeprogramdevirt',
-            'loop-extract',
-            'ipsccp',
-            'globaldce',
-            'argpromotion',
-            'attributor-cgscc',
-            'coro-split',
-            'function-attrs',
-            'inline',
-            'adce',
-            'aggressive-instcombine',
-            'alignment-from-assumptions',
-            'assume-builder',
-            'assume-simplify',
-            'bdce',
-            'callsite-splitting',
-            'codegenprepare',
-            'consthoist',
-            'constraint-elimination',
-            'coro-elide',
-            'correlated-propagation',
-            'dce',
-            'declare-to-assign',
-            'dfa-jump-threading',
-            'div-rem-pairs',
-            'dse',
-            'expand-memcmp',
-            'fix-irreducible',
-            'flatten-cfg',
-            'guard-widening',
-            'gvn-hoist',
-            'gvn-sink',
-            'indirectbr-expand',
-            'infer-alignment',
-            'instsimplify',
-            'interleaved-access',
-            'interleaved-load-combine',
-            'jump-threading',
-            'jump-table-to-switch',
-            'lcssa',
-            'libcalls-shrinkwrap',
-            'load-store-vectorizer',
-            'loop-data-prefetch',
-            'loop-distribute',
-            'loop-fusion',
-            'loop-load-elim',
-            'loop-simplify',
-            'loop-sink',
-            'loop-versioning',
-            'lower-constant-intrinsics',
-            'lower-expect',
-            'lower-invoke',
-            'lower-switch',
-            'lower-widenable-condition',
-            'mem2reg',
-            'memcpyopt',
-            'mergeicmps',
-            'mergereturn',
-            'nary-reassociate',
-            'newgvn',
-            'partially-inline-libcalls',
-            'pgo-memop-opt',
-            'reassociate',
-            'scalarize-masked-mem-intrin',
-            'sccp',
-            'select-optimize',
-            'separate-const-offset-from-gep',
-            'sink',
-            'slp-vectorizer',
-            'slsr',
-            'tailcallelim',
-            'tlshoist',
-            'typepromotion',
-            'vector-combine',
-            'early-cse',
-            'loop-flatten',
-            'loop-interchange',
-            'loop-unroll-and-jam',
-            'canon-freeze',
-            'indvars',
-            'loop-bound-split',
-            'loop-deletion',
-            'loop-idiom',
-            'loop-idiom-vectorize',
-            'loop-instsimplify',
-            'loop-predication',
-            'loop-reduce',
-            'loop-simplifycfg',
-            'loop-unroll-full',
-            'loop-versioning-licm',
-        ]
         command += " -passes="
-        for pass_ in passes:
+        for pass_ in optPasses:
             command += f"{pass_}"
-            if pass_ != passes[-1]:
+            if pass_ != optPasses[-1]:
                 command += ','
         print(f"OPT   {file}")
         code = callCmd(command, True)[0]

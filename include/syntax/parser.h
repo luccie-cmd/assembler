@@ -40,6 +40,7 @@ class Parser
     AstNode*            parseNode();
     Lexer*              _lexer;
     Token*              currentToken;
+    Token* currentLabelDefinition;
     DiagManager*        _diagMngr;
     std::vector<Token*> buffer;
 };
