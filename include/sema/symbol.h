@@ -44,6 +44,7 @@ class SymbolTable
     ~SymbolTable();
     void    pushSymbol(Symbol* symbol);
     Symbol* getSymbolByName(std::string name);
+    std::vector<Symbol*> getSymbols();
 
   private:
     std::vector<Symbol*> _symbols;

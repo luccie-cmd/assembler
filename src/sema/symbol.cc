@@ -29,6 +29,10 @@ Symbol* SymbolTable::getSymbolByName(std::string name)
     }
     return nullptr;
 }
+std::vector<Symbol*> SymbolTable::getSymbols()
+{
+    return this->_symbols;
+}
 Symbol::Symbol(SymbolBinding symbolBind, std::string name, bool isDefinedByLabel)
 {
     this->symbolBind       = symbolBind;

@@ -654,6 +654,26 @@ void SemanticAnalyzer::verify()
 {
     this->firstPass();
     this->secondPass();
+    for (Symbol* sym : this->_symTable->getSymbols())
+    {
+        this->_diagMngr->log(DiagLevel::NOTE, 0, "%s %lu %lu %s\n", sym->getName().c_str(),
+                             sym->getSymbolKind(), sym->getSymbolBind(),
+                             sym->getIsDefinedByLabel() ? "true" : "false");
+        if (sym->getSymbolKind() == SymbolKind::Unset ||
+            sym->getSymbolKind() == SymbolKind::Unknown)
+        {
+            this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                 "Symbol `%s` could not have its kind resolved\n",
+                                 sym->getName().c_str());
+        }
+        if (sym->getSymbolBind() == SymbolBinding::Extern && sym->getIsDefinedByLabel())
+        {
+            this->_diagMngr->log(
+                DiagLevel::ERROR, 0,
+                "Symbol `%s` was declared external but its definition is given in the file\n",
+                sym->getName().c_str());
+        }
+    }
     // TODO(luccie-cmd): Verify symbol table to ensure everything has a symbol kind (function,
     // object, etc)
     this->thirdPass();
