@@ -13,6 +13,7 @@ enum struct DeclarationNodeType
     Type,
     Section,
     Label,
+    Arguments,
 };
 class DeclarationNode : public AstNode
 {
@@ -59,6 +60,19 @@ class TypeDeclarationNode : public DeclarationNode
   private:
     Token* _name;
     Token* _type;
+};
+class ArgumentsDeclarationNode : public DeclarationNode
+{
+  public:
+    ArgumentsDeclarationNode(Token* name, Token* count);
+    ~ArgumentsDeclarationNode();
+    void   print(size_t spaceOffset);
+    Token* getName();
+    Token* getCount();
+
+  private:
+    Token* _name;
+    Token* _count;
 };
 class SectionDeclarationNode : public DeclarationNode
 {

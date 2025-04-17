@@ -232,6 +232,10 @@ void SemanticAnalyzer::verifyTypeDecl(TypeDeclarationNode* typeDeclNode)
         }
     }
 }
+void SemanticAnalyzer::verifyArgDecl(ArgumentsDeclarationNode* argDeclNode)
+{
+    (void)argDeclNode;
+}
 void SemanticAnalyzer::verifyDeclaration(DeclarationNode* declNode)
 {
     switch (declNode->getDeclType())
@@ -264,6 +268,13 @@ void SemanticAnalyzer::verifyDeclaration(DeclarationNode* declNode)
     {
         TypeDeclarationNode* typeDeclNode = reinterpret_cast<TypeDeclarationNode*>(declNode);
         this->verifyTypeDecl(typeDeclNode);
+    }
+    break;
+    case DeclarationNodeType::Arguments:
+    {
+        ArgumentsDeclarationNode* argDeclNode =
+            reinterpret_cast<ArgumentsDeclarationNode*>(declNode);
+        this->verifyArgDecl(argDeclNode);
     }
     break;
     default:

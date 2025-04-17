@@ -84,6 +84,7 @@ AstNode* Parser::parseNode()
     case TokenType::GLOBAL:
     case TokenType::EXTERN:
     case TokenType::SECTION:
+    case TokenType::ARGUMENTS:
     {
         return this->parseDeclaration();
     }

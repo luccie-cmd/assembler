@@ -1,46 +1,73 @@
+#include <clopts.h>
 #include <cstdio>
-#ifdef COMPILE
-#include <clopts.hh>
-using namespace command_line_options;
-using options =
-    clopts<flag<"--64", "Enable 64 bit compilation">, flag<"--32", "Enable 32 bit compilation">,
-           option<"-o", "File to put the outputs into">,
-           option<"-f", "Output format", values<"bin", "elf32", "elf64">>,
-           positional<"file", "The file whose contents should be parsed", file<>,
-                      /*required=*/true>,
-           help<>>;
-#endif
+// #include <hash_map>
+using namespace command_line_opts;
+std::string inputFile;
+std::string outputFile;
+bool        dumpAst;
+bool        dumpIr;
+
+void handleWarnings(std::string warning)
+{
+    std::printf("TODO warning: %s\n", warning.c_str());
+}
+void handleOptimizations(std::string opts)
+{
+    std::printf("TODO optimizations: %s\n", opts.c_str());
+}
+void setOutput(std::string path)
+{
+    if (!outputFile.empty())
+    {
+        fprintf(stderr, "Cannot have multiple output files\n");
+        exit(1);
+    }
+    outputFile = path;
+}
+int unknownArg(std::string path)
+{
+    if (path.starts_with("-dump-"))
+    {
+        std::string tree = path.substr(6);
+        if (tree == "ast")
+        {
+            dumpAst = true;
+        }
+        if (tree == "ir")
+        {
+            dumpIr = true;
+        }
+        return 0;
+    }
+    if (!inputFile.empty())
+    {
+        fprintf(stderr, "Cannot have multiple input files\n");
+        return 1;
+    }
+    inputFile = path;
+    return 0;
+}
+clopts_opt_t clopts = {{{"-W", handleWarnings}, {"-f", handleOptimizations}, {"-o", setOutput}},
+                       unknownArg};
+
 #include <driver/context.h>
 #include <driver/diag.h>
 #include <string>
 
 int main(int argc, char** argv)
 {
-    std::string             contents, file, outfile;
-    assembler::outputBits   ob;
+    std::string             contents;
+    assembler::outputBits   ob = assembler::outputBits::Q64;
     assembler::outputFormat of;
-#ifdef COMPILE
-    auto opts        = options::parse(argc, argv);
-    contents         = opts.get<"file">()->contents;
-    file             = opts.get<"file">()->path;
-    outfile          = opts.get_or<"-o">("a.out");
-    ob               = (opts.get<"--32">()
-                            ? assembler::outputBits::D32
-                            : (opts.get<"--64">() ? assembler::outputBits::Q64
-                                                  : (sizeof(void*) == 8 ? assembler::outputBits::Q64
-                                                                        : assembler::outputBits::D32)));
-    of               = (ob == assembler::outputBits::D32
-                            ? assembler::outputFormat::ELF32
-                            : (ob == assembler::outputBits::Q64 ? assembler::outputFormat::ELF64
-                                                                : assembler::outputFormat::INVALID));
-    std::string* opt = opts.get<"-f">();
-    if (opt != nullptr)
-    {
-        std::printf("TODO: overriding default format specifier\n");
-    }
-#endif
-    assembler::DiagManager* diagManager = new assembler::DiagManager(file, true, true);
-    assembler::Context*     ctx = new assembler::Context(contents, diagManager, outfile, ob, of);
+    clopts.parse(argc, argv);
+    contents                            = clopts.handleFile(inputFile);
+    ob                                  = assembler::outputBits::Q64;
+    of                                  = (ob == assembler::outputBits::D32
+                                               ? assembler::outputFormat::ELF32
+                                               : (ob == assembler::outputBits::Q64 ? assembler::outputFormat::ELF64
+                                                                                   : assembler::outputFormat::INVALID));
+    assembler::DiagManager* diagManager = new assembler::DiagManager(inputFile, true, true);
+    assembler::Context*     ctx = new assembler::Context(contents, diagManager, outputFile, ob, of);
     ctx->start();
     return 0;
 }

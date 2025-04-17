@@ -26,6 +26,7 @@ class Symbol
     ~Symbol();
     void          setSymbolKind(SymbolKind type);
     void          setIsDefinedByLabel(bool newState);
+    void          setArgumentsCount(size_t count);
     SymbolKind    getSymbolKind();
     SymbolBinding getSymbolBind();
     std::string   getName();
@@ -36,14 +37,15 @@ class Symbol
     SymbolBinding symbolBind;
     std::string   name;
     bool          isDefinedByLabel;
+    size_t        argumentCount;
 };
 class SymbolTable
 {
   public:
     SymbolTable();
     ~SymbolTable();
-    void    pushSymbol(Symbol* symbol);
-    Symbol* getSymbolByName(std::string name);
+    void                 pushSymbol(Symbol* symbol);
+    Symbol*              getSymbolByName(std::string name);
     std::vector<Symbol*> getSymbols();
 
   private:

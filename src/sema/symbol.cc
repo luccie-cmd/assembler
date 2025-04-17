@@ -39,6 +39,7 @@ Symbol::Symbol(SymbolBinding symbolBind, std::string name, bool isDefinedByLabel
     this->symbolKind       = SymbolKind::Unset;
     this->name             = name;
     this->isDefinedByLabel = isDefinedByLabel;
+    this->argumentCount    = -1;
 }
 Symbol::~Symbol() {}
 std::string Symbol::getName()

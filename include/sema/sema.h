@@ -1,12 +1,13 @@
 #if !defined(_ASSEMBLER_SEMA_SEMA_H_)
 #define _ASSEMBLER_SEMA_SEMA_H_
+#include "symbol.h"
+
 #include <cstdint>
 #include <driver/diag.h>
 #include <syntax/ast/ast.h>
 #include <syntax/ast/decl.h>
 #include <syntax/ast/expr.h>
 #include <syntax/ast/inst.h>
-#include "symbol.h"
 
 namespace assembler
 {
@@ -23,6 +24,7 @@ class SemanticAnalyzer
     void                                   verifySectionDecl(SectionDeclarationNode* sectionDecl);
     void                                   verifyLabelDecl(LabelDeclarationNode* labelDeclNode);
     void                                   verifyTypeDecl(TypeDeclarationNode* typeDeclNode);
+    void                                   verifyArgDecl(ArgumentsDeclarationNode* argDeclNode);
     void                                   verifyInstruction(InstructionNode*& instNode);
     std::pair<ExpressionNodeType, uint8_t> verifyExpression(ExpressionNode* exprNode);
     void                                   verifyDeclaration(DeclarationNode* declNode);

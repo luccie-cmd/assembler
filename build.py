@@ -85,7 +85,7 @@ CONFIG["CFLAGS"] += ["-O0", '-DNDEBUG']
 CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wno-shadow']
 CONFIG["CXXFLAGS"] = ['-fno-exceptions', '-fno-rtti']
 CONFIG["ASFLAGS"] = ['-felf64']
-CONFIG["LDFLAGS"] = ['-Wl,--gc-sections', '-Wl,--build-id=none', '-fno-PIE', '-fno-PIC', '-O3']
+CONFIG["LDFLAGS"] = ['-Wl,--gc-sections', '-Wl,--build-id=none', '-fno-PIE', '-fno-PIC', '-O3', '-march=native', '-mtune=native']
 CONFIG["INCPATHS"] = ['-Iinclude']
 
 if "yes" in CONFIG.get("analyzer"):

@@ -161,4 +161,42 @@ Token* TypeDeclarationNode::getType()
 {
     return this->_type;
 }
+ArgumentsDeclarationNode::ArgumentsDeclarationNode(Token* name, Token* count)
+    : DeclarationNode(DeclarationNodeType::Arguments)
+{
+    this->_name  = name;
+    this->_count = count;
+}
+ArgumentsDeclarationNode::~ArgumentsDeclarationNode() {}
+void ArgumentsDeclarationNode::print(size_t spacing)
+{
+    for (size_t i = 0; i < spacing; ++i)
+    {
+        std::putchar(' ');
+    }
+    std::printf("- Declaration\n");
+    for (size_t i = 0; i < spacing + SPACING_SIZE; ++i)
+    {
+        std::putchar(' ');
+    }
+    std::printf("- Type\n");
+    for (size_t i = 0; i < spacing + (SPACING_SIZE * 2); ++i)
+    {
+        std::putchar(' ');
+    }
+    std::printf("- Name: `%s`\n", this->_name->get_value().c_str());
+    for (size_t i = 0; i < spacing + (SPACING_SIZE * 2); ++i)
+    {
+        std::putchar(' ');
+    }
+    std::printf("- Count: %lu\n", std::stoul(this->_count->get_value()));
+}
+Token* ArgumentsDeclarationNode::getName()
+{
+    return this->_name;
+}
+Token* ArgumentsDeclarationNode::getCount()
+{
+    return this->_count;
+}
 }; // namespace assembler

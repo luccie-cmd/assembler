@@ -22,6 +22,13 @@ AstNode* Parser::parseSectionDecl()
 {
     return new SectionDeclarationNode(this->expect(true, TokenType::IDENTIFIER));
 }
+AstNode* Parser::parseArgumentsDecl()
+{
+    Token* name = this->expect(true, TokenType::IDENTIFIER);
+    this->expect(true, TokenType::COMMA);
+    Token* argumentCount = this->expect(true, TokenType::LIT_NUMBER);
+    return new ArgumentsDeclarationNode(name, argumentCount);
+}
 AstNode* Parser::parseDeclaration()
 {
     switch (this->currentToken->get_type())
@@ -48,6 +55,12 @@ AstNode* Parser::parseDeclaration()
     {
         this->consume();
         return this->parseExternDecl();
+    }
+    break;
+    case TokenType::ARGUMENTS:
+    {
+        this->consume();
+        return this->parseArgumentsDecl();
     }
     break;
     default:

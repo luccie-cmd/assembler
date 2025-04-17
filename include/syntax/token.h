@@ -37,6 +37,7 @@ enum struct TokenType
     GLOBAL,
     EXTERN,
     TYPE,
+    ARGUMENTS,
     SECTION,
     QWORD,
     DWORD,

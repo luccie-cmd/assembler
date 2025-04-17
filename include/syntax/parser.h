@@ -35,6 +35,7 @@ class Parser
     AstNode*            parseExternDecl();
     AstNode*            parseSectionDecl();
     AstNode*            parseLabelDecl();
+    AstNode* parseArgumentsDecl();
     AstNode*            parseInstruction();
     AstNode*            parseDeclaration();
     AstNode*            parseNode();
