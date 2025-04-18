@@ -20,17 +20,15 @@ Context::Context(std::string contents, DiagManager* diagManager, std::string out
 Context::~Context() {}
 void Context::start()
 {
-    Lexer*  lexer  = new Lexer(this->_contents, this->_diagManager);
-    Parser* parser = new Parser(lexer, this->_diagManager);
-    Ast*    ast    = parser->getAst();
-    if (this->_enabledOpts.at(assembler::optimizations::ConstantFolding))
+    Lexer*                     lexer         = new Lexer(this->_contents, this->_diagManager);
+    Parser*                    parser        = new Parser(lexer, this->_diagManager);
+    Ast*                       ast           = parser->getAst();
+    opts::ConstantFoldingPass* constFoldPass = new opts::ConstantFoldingPass(
+        this->_enabledOpts.at(assembler::optimizations::ConstantFolding));
+    std::vector<std::pair<DiagLevel, std::string>> errors = constFoldPass->run(ast->getNodes());
+    for (std::pair<DiagLevel, std::string> err : errors)
     {
-        opts::ConstantFoldingPass* constFoldPass              = new opts::ConstantFoldingPass;
-        std::vector<std::pair<DiagLevel, std::string>> errors = constFoldPass->run(ast->getNodes());
-        for (std::pair<DiagLevel, std::string> err : errors)
-        {
-            this->_diagManager->log(err.first, 0, "%s\n", err.second.c_str());
-        }
+        this->_diagManager->log(err.first, 0, "%s\n", err.second.c_str());
     }
     SemanticAnalyzer* sema = new SemanticAnalyzer(ast, this->_diagManager);
     sema->verify();

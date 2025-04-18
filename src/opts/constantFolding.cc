@@ -5,12 +5,14 @@
 
 namespace assembler::opts
 {
-ConstantFoldingPass::ConstantFoldingPass()
+ConstantFoldingPass::ConstantFoldingPass(bool fold)
 {
+    this->fold = fold;
     this->name = "Constant Folding";
 }
 ConstantFoldingPass::~ConstantFoldingPass() {}
-static std::optional<std::pair<DiagLevel, std::string>> foldExpr(ExpressionNode*& expr)
+std::optional<std::pair<DiagLevel, std::string>>
+ConstantFoldingPass::foldExpr(ExpressionNode*& expr)
 {
     switch (expr->getExprType())
     {
@@ -22,7 +24,7 @@ static std::optional<std::pair<DiagLevel, std::string>> foldExpr(ExpressionNode*
     case ExpressionNodeType::Sized:
     {
         ExpressionNode* exprSized = reinterpret_cast<SizedExpressionNode*>(expr)->getExpr();
-        return foldExpr(exprSized);
+        return this->foldExpr(exprSized);
     }
     break;
     case ExpressionNodeType::Binary:
@@ -32,8 +34,16 @@ static std::optional<std::pair<DiagLevel, std::string>> foldExpr(ExpressionNode*
         AstNode*              rhsNode = binExpr->getRhs();
         ExpressionNode*&      lhs     = reinterpret_cast<ExpressionNode*&>(lhsNode);
         ExpressionNode*&      rhs     = reinterpret_cast<ExpressionNode*&>(rhsNode);
-        foldExpr(lhs);
-        foldExpr(rhs);
+        std::optional<std::pair<DiagLevel, std::string>> lhsResult = foldExpr(lhs);
+        if (lhsResult.has_value())
+        {
+            return lhsResult;
+        }
+        std::optional<std::pair<DiagLevel, std::string>> rhsResult = foldExpr(rhs);
+        if (rhsResult.has_value())
+        {
+            return rhsResult;
+        }
         if (lhs->getExprType() != ExpressionNodeType::Immediate ||
             rhs->getExprType() != ExpressionNodeType::Immediate)
         {
@@ -43,6 +53,13 @@ static std::optional<std::pair<DiagLevel, std::string>> foldExpr(ExpressionNode*
         ImmediateExpressionNode* rhsImm = reinterpret_cast<ImmediateExpressionNode*>(rhs);
         uint64_t                 lhsVal = std::stoul(lhsImm->getValue()->get_value());
         uint64_t                 rhsVal = std::stoul(rhsImm->getValue()->get_value());
+        if (!this->fold)
+        {
+            return {
+                {DiagLevel::WARNING,
+                 std::format("expression {} {} {} could be folded but constant folding is disabled",
+                             lhsVal, binExpr->getOperation()->get_value().at(0), rhsVal)}};
+        }
         switch (binExpr->getOperation()->get_value().at(0))
         {
         case '*':
@@ -87,7 +104,7 @@ static std::optional<std::pair<DiagLevel, std::string>> foldExpr(ExpressionNode*
     }
     return {};
 }
-static std::optional<std::pair<DiagLevel, std::string>> foldNode(AstNode* node)
+std::optional<std::pair<DiagLevel, std::string>> ConstantFoldingPass::foldNode(AstNode* node)
 {
     switch (node->getAstNodeType())
     {
@@ -97,7 +114,7 @@ static std::optional<std::pair<DiagLevel, std::string>> foldNode(AstNode* node)
         for (AstNode*& instArg : instNode->getArgs())
         {
             ExpressionNode*& exprNode = reinterpret_cast<ExpressionNode*&>(instArg);
-            std::optional<std::pair<DiagLevel, std::string>> err = foldExpr(exprNode);
+            std::optional<std::pair<DiagLevel, std::string>> err = this->foldExpr(exprNode);
             if (err.has_value())
             {
                 return err;
@@ -108,7 +125,7 @@ static std::optional<std::pair<DiagLevel, std::string>> foldNode(AstNode* node)
     case AstNodeType::Expression:
     {
         ExpressionNode* expr = reinterpret_cast<ExpressionNode*>(node);
-        return foldExpr(expr);
+        return this->foldExpr(expr);
     }
     break;
     case AstNodeType::Direct:

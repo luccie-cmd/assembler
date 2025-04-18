@@ -447,11 +447,11 @@ std::pair<ExpressionNodeType, uint8_t> SemanticAnalyzer::verifyExpression(Expres
             ExpressionNode* dispExpr = reinterpret_cast<ExpressionNode*>(displacement);
             if (dispExpr->getExprType() != ExpressionNodeType::Immediate)
             {
-                this->_diagMngr->log(
-                    DiagLevel::ERROR, 0,
-                    "Invalid memory displacement argument, expected an "
-                    "immediate but got %lu. Did you mean to enable constant folding?\n",
-                    (size_t)dispExpr->getExprType());
+                this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                     "Invalid memory displacement argument, expected an "
+                                     "immediate but got %lu. Did you mean to enable constant "
+                                     "folding? (-fconst-fold)\n",
+                                     (size_t)dispExpr->getExprType());
             }
             ImmediateExpressionNode* immScaleExpr =
                 reinterpret_cast<ImmediateExpressionNode*>(dispExpr);
@@ -492,7 +492,7 @@ std::pair<ExpressionNodeType, uint8_t> SemanticAnalyzer::verifyExpression(Expres
     {
         this->_diagMngr->log(DiagLevel::ERROR, 0,
                              "Binary expressions aren't allowed as instruction arguments. Did you "
-                             "mean to enable constant folding?");
+                             "mean to enable constant folding? (-fconst-fold)\n");
     }
     break;
     default:
