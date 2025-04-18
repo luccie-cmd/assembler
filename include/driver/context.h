@@ -1,7 +1,7 @@
 #if !defined(_ASSEMBLER_DRIVER_CONTEXT_H_)
 #define _ASSEMBLER_DRIVER_CONTEXT_H_
 #include "diag.h"
-
+#include <unordered_map>
 #include <string>
 
 namespace assembler
@@ -20,11 +20,17 @@ enum struct outputFormat : int
     ELF64,
     BINARY,
 };
+enum struct optimizations : int
+{
+    Invalid,
+    ConstantFolding,
+    End,
+};
 class Context
 {
   public:
     Context(std::string contents, DiagManager* diagManager, std::string outfile, outputBits ob,
-            outputFormat of);
+            outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts);
     ~Context();
     void start();
 
@@ -34,6 +40,7 @@ class Context
     std::string  _outfile;
     outputBits   _ob;
     outputFormat _of;
+    std::unordered_map<assembler::optimizations, bool> _enabledOpts;
 };
 } // namespace assembler
 

@@ -1,11 +1,31 @@
 #include <clopts.h>
 #include <cstdio>
-// #include <hash_map>
+#include <driver/context.h>
+#include <driver/diag.h>
+#include <filesystem>
+#include <string>
+
 using namespace command_line_opts;
-std::string inputFile;
-std::string outputFile;
-bool        dumpAst;
-bool        dumpIr;
+std::string                                                   inputFile;
+std::string                                                   outputFile;
+bool                                                          dumpAst;
+bool                                                          dumpIr;
+std::unordered_map<assembler::optimizations, bool>            enabledOpts;
+std::vector<std::pair<std::string, assembler::optimizations>> stringOpts = {
+    {"const-fold", assembler::optimizations::ConstantFolding},
+};
+
+assembler::optimizations stringToOpt(std::string opt)
+{
+    for (std::pair<std::string, assembler::optimizations> strOpt : stringOpts)
+    {
+        if (strOpt.first == opt)
+        {
+            return strOpt.second;
+        }
+    }
+    return assembler::optimizations::Invalid;
+}
 
 void handleWarnings(std::string warning)
 {
@@ -13,7 +33,19 @@ void handleWarnings(std::string warning)
 }
 void handleOptimizations(std::string opts)
 {
-    std::printf("TODO optimizations: %s\n", opts.c_str());
+    bool enable = true;
+    if (opts.starts_with("no-"))
+    {
+        opts   = std::string((char*)((size_t)opts.c_str() + 3));
+        enable = false;
+    }
+    assembler::optimizations opt = stringToOpt(opts);
+    if (opt == assembler::optimizations::Invalid)
+    {
+        std::printf("error: Invalid optimization `%s`\n", opts.c_str());
+        std::exit(1);
+    }
+    enabledOpts.insert_or_assign(opt, enable);
 }
 void setOutput(std::string path)
 {
@@ -39,23 +71,28 @@ int unknownArg(std::string path)
         }
         return 0;
     }
-    if (!inputFile.empty())
+    if (std::filesystem::exists(path))
     {
-        fprintf(stderr, "Cannot have multiple input files\n");
-        return 1;
+        if (!inputFile.empty())
+        {
+            fprintf(stderr, "Cannot have multiple input files\n");
+            return 1;
+        }
+        inputFile = path;
+        return 0;
     }
-    inputFile = path;
-    return 0;
+    return 1;
 }
-clopts_opt_t clopts = {{{"-W", handleWarnings}, {"-f", handleOptimizations}, {"-o", setOutput}},
-                       unknownArg};
-
-#include <driver/context.h>
-#include <driver/diag.h>
-#include <string>
+clopts_opt_t clopts = {
+    {{"-W", handleWarnings, false}, {"-f", handleOptimizations, false}, {"-o", setOutput, true}},
+    unknownArg};
 
 int main(int argc, char** argv)
 {
+    for (size_t i = 0; i < static_cast<size_t>(assembler::optimizations::End); ++i)
+    {
+        enabledOpts.insert_or_assign(static_cast<assembler::optimizations>(i), false);
+    }
     std::string             contents;
     assembler::outputBits   ob = assembler::outputBits::Q64;
     assembler::outputFormat of;
@@ -67,7 +104,8 @@ int main(int argc, char** argv)
                                                : (ob == assembler::outputBits::Q64 ? assembler::outputFormat::ELF64
                                                                                    : assembler::outputFormat::INVALID));
     assembler::DiagManager* diagManager = new assembler::DiagManager(inputFile, true, true);
-    assembler::Context*     ctx = new assembler::Context(contents, diagManager, outputFile, ob, of);
+    assembler::Context*     ctx =
+        new assembler::Context(contents, diagManager, outputFile, ob, of, enabledOpts);
     ctx->start();
     return 0;
 }

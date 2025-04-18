@@ -1,10 +1,10 @@
 #if !defined(_CLOPTS_H_)
 #define _CLOPTS_H_
+#include <cstring>
 #include <functional>
 #include <optional>
 #include <string>
 #include <vector>
-#include <cstring>
 
 namespace command_line_opts
 {
@@ -12,6 +12,7 @@ struct clopts_arg_t
 {
     std::string                      prefix;
     std::function<void(std::string)> function;
+    bool                             takesSpace;
 };
 class clopts_opt_t
 {
@@ -41,13 +42,15 @@ class clopts_opt_t
                 if (strArg.starts_with(arg.prefix))
                 {
                     char* opt = (char*)((size_t)strArg.c_str() + arg.prefix.size());
-                    if (strArg == arg.prefix)
+                    if (strArg == arg.prefix && arg.takesSpace)
                     {
                         i++;
                         opt = argv[i];
                     }
-                    arg.function(std::string(opt));
-                    found = true;
+                    if (strlen(opt) != 0) {
+                        arg.function(std::string(opt));
+                        found = true;
+                    }
                 }
             }
             if (!found && mUnkown.has_value() && mUnkown.value()(strArg))
@@ -57,9 +60,11 @@ class clopts_opt_t
             }
         }
     }
-    std::string handleFile(std::string path) {
+    std::string handleFile(std::string path)
+    {
         std::FILE* f = std::fopen(path.c_str(), "rb");
-        if(!f){
+        if (!f)
+        {
             fprintf(stderr, "%s`%s`\n", std::strerror(errno), path.c_str());
             exit(1);
         }
