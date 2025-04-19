@@ -104,8 +104,8 @@ int main(int argc, char** argv)
                                                : (ob == assembler::outputBits::Q64 ? assembler::outputFormat::ELF64
                                                                                    : assembler::outputFormat::INVALID));
     assembler::DiagManager* diagManager = new assembler::DiagManager(inputFile, true, true);
-    assembler::Context*     ctx =
-        new assembler::Context(contents, diagManager, outputFile, ob, of, enabledOpts);
+    assembler::Context*     ctx = new assembler::Context(contents, diagManager, outputFile, ob, of,
+                                                         enabledOpts, dumpAst, dumpIr);
     ctx->start();
     return 0;
 }

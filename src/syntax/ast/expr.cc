@@ -217,8 +217,7 @@ SizedExpressionNode::SizedExpressionNode(size_t size, ExpressionNode* expr)
 SizedExpressionNode::~SizedExpressionNode() {}
 void SizedExpressionNode::print(size_t spacing)
 {
-    (void)spacing;
-    std::printf("TODO: Print sized expression nodes\n");
+    this->expr->print(spacing);
 }
 size_t SizedExpressionNode::getSize()
 {

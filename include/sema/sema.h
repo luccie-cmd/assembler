@@ -17,6 +17,7 @@ class SemanticAnalyzer
     SemanticAnalyzer(Ast* ast, DiagManager* diagManager);
     ~SemanticAnalyzer();
     void verify();
+    SymbolTable* getSymTable();
 
   private:
     void                                   verifyGlobalDecl(GlobalDeclarationNode* globalDeclNode);

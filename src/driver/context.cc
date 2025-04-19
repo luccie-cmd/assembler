@@ -8,7 +8,8 @@
 namespace assembler
 {
 Context::Context(std::string contents, DiagManager* diagManager, std::string outfile, outputBits ob,
-                 outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts)
+                 outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts,
+                 bool dumpAst, bool dumpIR)
 {
     this->_contents    = contents;
     this->_diagManager = diagManager;
@@ -16,6 +17,8 @@ Context::Context(std::string contents, DiagManager* diagManager, std::string out
     this->_ob          = ob;
     this->_of          = of;
     this->_enabledOpts = enabledOpts;
+    this->_dumpAst     = dumpAst;
+    this->_dumpIR      = dumpIR;
 }
 Context::~Context() {}
 void Context::start()
@@ -32,7 +35,10 @@ void Context::start()
     }
     SemanticAnalyzer* sema = new SemanticAnalyzer(ast, this->_diagManager);
     sema->verify();
-    // ast->print();
+    if (this->_dumpAst)
+    {
+        ast->print();
+    }
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is lirgen)\n");
 }

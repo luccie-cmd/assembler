@@ -1,16 +1,9 @@
-; test globals
-global main
-type main, function
-arguments main, 4
-
 ; .text {
 ;   declare function, @hello(i64 %rdi);
 ;   define function, @main(i64 %rdi, i64 %rsi, i64 %rdx, i64 %rcx) {
 ;       __begin__:
 ;           %0 = i64 0
-;           alias %rax, %0
 ;           %1 = i64 0
-;           alias %rdi, %1
 ;           store %1, i64 10
 ;           %2 = add i64 %1, i64 1
 ;           store %2, i32 10
@@ -34,7 +27,7 @@ arguments main, 4
 ;           %17 = imul i64 %rcx, i64 2
 ;           %18 = add i64 %17, i64 %1
 ;           %19 = add i64 %18, i64 10
-;           %20 = load i16 %19
+;           %20 = load i64 %19
 ;           store %1, i64 %9
 ;           %21 = add i64 %1, i64 1
 ;           store %21, i32 %11
@@ -55,6 +48,10 @@ arguments main, 4
 ;   define object, @str0;
 ;   value @str0 = "Hello\0a\00Warning: Symbol name '.text' may conflict with section names and confuse linkers or debuggers.";
 ; }
+; test globals
+global main
+type main, function
+arguments main, 4
 ; test externs
 extern hello
 type hello, function

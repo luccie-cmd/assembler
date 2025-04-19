@@ -1,8 +1,9 @@
 #if !defined(_ASSEMBLER_DRIVER_CONTEXT_H_)
 #define _ASSEMBLER_DRIVER_CONTEXT_H_
 #include "diag.h"
-#include <unordered_map>
+
 #include <string>
+#include <unordered_map>
 
 namespace assembler
 {
@@ -30,16 +31,19 @@ class Context
 {
   public:
     Context(std::string contents, DiagManager* diagManager, std::string outfile, outputBits ob,
-            outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts);
+            outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts,
+            bool dumpAst, bool dumpIR);
     ~Context();
     void start();
 
   private:
-    std::string  _contents;
-    DiagManager* _diagManager;
-    std::string  _outfile;
-    outputBits   _ob;
-    outputFormat _of;
+    std::string                                        _contents;
+    DiagManager*                                       _diagManager;
+    std::string                                        _outfile;
+    outputBits                                         _ob;
+    outputFormat                                       _of;
+    bool                                               _dumpAst;
+    bool                                               _dumpIR;
     std::unordered_map<assembler::optimizations, bool> _enabledOpts;
 };
 } // namespace assembler
