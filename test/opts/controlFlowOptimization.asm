@@ -7,10 +7,10 @@ main:
     jmp .label2
 .label1:
     mov rbx, 1
-    jmp end
+    jmp .end
 .label2:
     mov rbx, 2
-end:
+.end:
     ret
 
 ; Expected:
@@ -24,5 +24,5 @@ end:
 ;     jmp .label2
 ; .label2:
 ;     mov rbx, 2
-; end:
+; .end:
 ;     ret
