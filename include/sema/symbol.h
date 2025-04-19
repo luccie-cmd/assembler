@@ -26,16 +26,19 @@ class Symbol
     ~Symbol();
     void          setSymbolKind(SymbolKind type);
     void          setIsDefinedByLabel(bool newState);
+    void          setIsChild(bool newState);
     void          setArgumentsCount(size_t count);
     SymbolKind    getSymbolKind();
     SymbolBinding getSymbolBind();
     std::string   getName();
     bool          getIsDefinedByLabel();
+    bool          getIsChild();
 
   private:
     SymbolKind    symbolKind;
     SymbolBinding symbolBind;
     std::string   name;
+    bool          isChild;
     bool          isDefinedByLabel;
     size_t        argumentCount;
 };

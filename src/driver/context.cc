@@ -1,6 +1,7 @@
 #include <driver/context.h>
 #include <opts/constantFolding.h>
 #include <sema/sema.h>
+#include <slir/gen/irgen.h>
 #include <syntax/ast/ast.h>
 #include <syntax/lexer.h>
 #include <syntax/parser.h>
@@ -39,6 +40,9 @@ void Context::start()
     {
         ast->print();
     }
+    ir::gen::IrGen* irGen   = new ir::gen::IrGen(this->_diagManager, ast, sema->getSymTable());
+    ir::ir::Module* _module = irGen->genModule();
+    _module->print();
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is lirgen)\n");
 }

@@ -40,6 +40,7 @@ Symbol::Symbol(SymbolBinding symbolBind, std::string name, bool isDefinedByLabel
     this->name             = name;
     this->isDefinedByLabel = isDefinedByLabel;
     this->argumentCount    = -1;
+    this->isChild          = false;
 }
 Symbol::~Symbol() {}
 std::string Symbol::getName()
@@ -58,6 +59,10 @@ bool Symbol::getIsDefinedByLabel()
 {
     return this->isDefinedByLabel;
 }
+bool Symbol::getIsChild()
+{
+    return this->isChild;
+}
 void Symbol::setSymbolKind(SymbolKind kind)
 {
     this->symbolKind = kind;
@@ -65,5 +70,9 @@ void Symbol::setSymbolKind(SymbolKind kind)
 void Symbol::setIsDefinedByLabel(bool isDefinedByLabel)
 {
     this->isDefinedByLabel = isDefinedByLabel;
+}
+void Symbol::setIsChild(bool isChild)
+{
+    this->isChild = isChild;
 }
 }; // namespace assembler

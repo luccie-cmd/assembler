@@ -80,9 +80,9 @@ force_rebuild = False
 if OLD_CONFIG != CONFIG:
     force_rebuild = True
     print("Configuration changed, rebuilding...")
-CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-PIE', '-fno-PIC', '-fomit-frame-pointer', '-g0']
+CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-PIE', '-fno-PIC', '-fomit-frame-pointer', '-g0', '-funsafe-math-optimizations -ffast-math']
 CONFIG["CFLAGS"] += ["-O0", '-DNDEBUG']
-CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wno-shadow']
+CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wno-shadow', '-Wno-unused-private-field']
 CONFIG["CXXFLAGS"] = ['-fno-exceptions', '-fno-rtti']
 CONFIG["ASFLAGS"] = ['-felf64']
 CONFIG["LDFLAGS"] = ['-Wl,--gc-sections', '-Wl,--build-id=none', '-fno-PIE', '-fno-PIC', '-O3', '-march=native', '-mtune=native']

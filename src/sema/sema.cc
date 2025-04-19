@@ -25,6 +25,10 @@ SemanticAnalyzer::~SemanticAnalyzer()
 {
     delete this->_symTable;
 }
+SymbolTable* SemanticAnalyzer::getSymTable()
+{
+    return this->_symTable;
+}
 std::vector<std::pair<std::string, SymbolKind>> stringSymPairs = {
     {"function", SymbolKind::Function}, {"object", SymbolKind::Object},
     {"section", SymbolKind::Section},   {"unknown", SymbolKind::Unknown},
@@ -167,6 +171,7 @@ void SemanticAnalyzer::verifyLabelDecl(LabelDeclarationNode* labelDeclNode)
                 parent.c_str());
         }
         checkSymbol->setSymbolKind(parentSymbol->getSymbolKind());
+        checkSymbol->setIsChild(true);
     }
 }
 void SemanticAnalyzer::verifyTypeDecl(TypeDeclarationNode* typeDeclNode)
