@@ -7,12 +7,24 @@
 
 namespace assembler::ir::ir
 {
+enum struct FunctionBinding
+{
+    DeclareInternal,
+    DeclareExternal,
+    Define,
+};
 class Function
 {
   public:
+    Function(std::string name, size_t arguments, FunctionBinding bind);
+    ~Function();
+    void print(size_t spacing);
+    void addBlock(Block* block);
+
   private:
     std::string         name;
     size_t              arguments;
+    FunctionBinding     funcBind;
     std::vector<Block*> blocks;
 };
 } // namespace assembler::ir::ir

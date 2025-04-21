@@ -63,6 +63,14 @@ bool Symbol::getIsChild()
 {
     return this->isChild;
 }
+size_t Symbol::getArgumentsCount()
+{
+    return this->argumentCount;
+}
+void Symbol::setArgumentsCount(size_t count)
+{
+    this->argumentCount = count;
+}
 void Symbol::setSymbolKind(SymbolKind kind)
 {
     this->symbolKind = kind;

@@ -12,6 +12,7 @@ class Module
     Module();
     ~Module();
     void print();
+    void addSection(Section* section);
 
   private:
     std::vector<Section*> sections;

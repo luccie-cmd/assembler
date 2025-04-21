@@ -35,6 +35,10 @@ std::vector<AstNode*>& InstructionNode::getArgs()
 {
     return this->_args;
 }
+uint8_t InstructionNode::getInstSize()
+{
+    return this->_instSize;
+}
 Token* InstructionNode::getMnemonic()
 {
     return this->_mnemonic;

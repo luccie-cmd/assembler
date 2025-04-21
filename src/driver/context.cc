@@ -42,8 +42,11 @@ void Context::start()
     }
     ir::gen::IrGen* irGen   = new ir::gen::IrGen(this->_diagManager, ast, sema->getSymTable());
     ir::ir::Module* _module = irGen->genModule();
-    _module->print();
+    if (this->_dumpIR)
+    {
+        _module->print();
+    }
     this->_diagManager->log(DiagLevel::ICE, 0,
-                            "TODO: Go further trough the pipeline (Next is lirgen)\n");
+                            "TODO: Go further trough the pipeline (Next is codegen)\n");
 }
 }; // namespace assembler

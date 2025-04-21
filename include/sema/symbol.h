@@ -33,6 +33,7 @@ class Symbol
     std::string   getName();
     bool          getIsDefinedByLabel();
     bool          getIsChild();
+    size_t        getArgumentsCount();
 
   private:
     SymbolKind    symbolKind;

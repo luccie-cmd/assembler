@@ -10,6 +10,11 @@ namespace assembler::ir::ir
 class Block
 {
   public:
+    Block(std::string name);
+    ~Block();
+    void print(size_t spacing);
+    void addInstruction(Instruction* inst);
+    std::vector<Instruction*> getInstructions();
   private:
     std::string               name;
     std::vector<Instruction*> instructions;

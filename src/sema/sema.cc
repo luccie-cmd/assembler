@@ -239,7 +239,32 @@ void SemanticAnalyzer::verifyTypeDecl(TypeDeclarationNode* typeDeclNode)
 }
 void SemanticAnalyzer::verifyArgDecl(ArgumentsDeclarationNode* argDeclNode)
 {
-    (void)argDeclNode;
+    Symbol* symbol = this->_symTable->getSymbolByName(argDeclNode->getName()->get_value());
+    if (symbol == nullptr)
+    {
+        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                             "Cannot set arguments of non existant symbol `%s`\n",
+                             argDeclNode->getName()->get_value().c_str());
+    }
+    if (symbol->getSymbolKind() != SymbolKind::Function)
+    {
+        this->_diagMngr->log(DiagLevel::ERROR, 0, "Cannot set arguments count of symbol type %lu\n",
+                             symbol->getSymbolKind());
+    }
+    size_t argCount = std::stoul(argDeclNode->getCount()->get_value());
+    if (symbol->getArgumentsCount() == argCount)
+    {
+        this->_diagMngr->log(DiagLevel::WARNING, 0,
+                             "Senseless overwrite of symbol `%s` with previous %lu\n",
+                             symbol->getName().c_str(), argCount);
+    }
+    else if (symbol->getArgumentsCount() != (size_t)-1)
+    {
+        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                             "Cannot overwrite arguments count from %lu to %lu of symbol `%s`\n",
+                             symbol->getArgumentsCount(), argCount, symbol->getName().c_str());
+    }
+    symbol->setArgumentsCount(argCount);
 }
 void SemanticAnalyzer::verifyDeclaration(DeclarationNode* declNode)
 {
@@ -299,7 +324,8 @@ void SemanticAnalyzer::firstPass()
         case AstNodeType::Declaration:
         {
             DeclarationNode* declNode = reinterpret_cast<DeclarationNode*>(node);
-            if (declNode->getDeclType() != DeclarationNodeType::Type)
+            if (declNode->getDeclType() != DeclarationNodeType::Type &&
+                declNode->getDeclType() != DeclarationNodeType::Arguments)
             {
                 this->verifyDeclaration(declNode);
             }
@@ -331,6 +357,10 @@ void SemanticAnalyzer::secondPass()
             if (declNode->getDeclType() == DeclarationNodeType::Type)
             {
                 this->verifyDeclaration(declNode);
+            }
+            else if (declNode->getDeclType() == DeclarationNodeType::Arguments)
+            {
+                this->_toHandleNodes.push_back(node);
             }
         }
         break;
@@ -545,7 +575,8 @@ void SemanticAnalyzer::verifyInstruction(InstructionNode*& instNode)
         {
             instSize = destArg.second;
         }
-        else if (destArg.first == ExpressionNodeType::Register)
+        else if (destArg.first == ExpressionNodeType::Register &&
+                 !instNode->getMnemonic()->get_value().ends_with("x"))
         {
             if (srcArg.first == ExpressionNodeType::Immediate)
             {
@@ -576,6 +607,11 @@ void SemanticAnalyzer::verifyInstruction(InstructionNode*& instNode)
                 std::printf("TODO: destArg.first == ExpressionNodeType::Register\n");
                 std::exit(1);
             }
+        }
+        else if (destArg.first == ExpressionNodeType::Register &&
+                 instNode->getMnemonic()->get_value().ends_with("x"))
+        {
+            instSize = destArg.second;
         }
         else if (destArg.first == ExpressionNodeType::Memory && destArg.second != 0)
         {
@@ -707,6 +743,12 @@ void SemanticAnalyzer::thirdPass()
     {
         switch (node->getAstNodeType())
         {
+        case AstNodeType::Declaration:
+        {
+            DeclarationNode* declNode = reinterpret_cast<DeclarationNode*>(node);
+            this->verifyDeclaration(declNode);
+        }
+        break;
         case AstNodeType::Instruction:
         {
             InstructionNode* instNode = reinterpret_cast<InstructionNode*>(node);

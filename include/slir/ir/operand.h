@@ -10,14 +10,22 @@ namespace assembler::ir::ir
 enum struct OperandKind
 {
     Register,
+    Immediate,
+    SSA,
+    Variable,
 };
 class Operand
 {
   public:
+    Operand(OperandKind kind, Type* type, std::string reg);
+    Operand(OperandKind kind, Type* type, uint64_t imm);
+    OperandKind getOperandKind();
+    void print();
   private:
     union
     {
         std::string reg;
+        uint64_t imm;
     };
     OperandKind kind;
     Type*       type;

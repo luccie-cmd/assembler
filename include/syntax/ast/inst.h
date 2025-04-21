@@ -18,6 +18,7 @@ class InstructionNode : public AstNode
     std::vector<AstNode*>& getArgs();
     Token*                 getMnemonic();
     void                   setInstSize(uint8_t instSize);
+    uint8_t                getInstSize();
 
   private:
     uint8_t               _instSize;

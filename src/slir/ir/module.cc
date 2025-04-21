@@ -6,6 +6,13 @@ Module::Module() {}
 Module::~Module() {}
 void Module::print()
 {
-    std::printf("TODO: Print IR module\n");
+    for (Section* section : this->sections)
+    {
+        section->print();
+    }
+}
+void Module::addSection(Section* section)
+{
+    this->sections.push_back(section);
 }
 } // namespace assembler::ir::ir

@@ -13,6 +13,7 @@ class Section
   public:
     Section(std::string name);
     ~Section();
+    void print();
     void addFunction(Function* func);
   private:
     std::string            name;

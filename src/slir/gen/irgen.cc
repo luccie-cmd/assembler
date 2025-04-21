@@ -1,6 +1,15 @@
+#include <algorithm>
+#include <deque>
+#include <functional>
 #include <slir/gen/irgen.h>
 #include <syntax/ast/decl.h>
 #include <syntax/ast/inst.h>
+#include <unordered_map>
+
+namespace utils
+{
+uint8_t getRegisterSize(std::string reg);
+};
 
 namespace assembler::ir::gen
 {
@@ -10,8 +19,411 @@ IrGen::IrGen(DiagManager* diagMngr, Ast* ast, SymbolTable* symTable)
     this->_ast      = ast;
     this->_symTable = symTable;
 }
+static size_t                                           instructionCount = 0;
+static std::vector<std::pair<std::string, std::string>> aliasses;
+static std::string                                      getSSAValueFromReg(std::string reg)
+{
+    std::string name = reg;
+    for (std::pair<std::string, std::string> oldNewAlias : aliasses)
+    {
+        if (oldNewAlias.first == name)
+        {
+            name = oldNewAlias.second;
+        }
+    }
+    return name;
+}
+static void addAlias(std::string oldName, std::string newName)
+{
+    aliasses.push_back({oldName, newName});
+}
+static std::string newResult()
+{
+    return std::string("%") + std::to_string(instructionCount++);
+}
+ir::Operand* IrGen::genOperand(ExpressionNode* node)
+{
+    switch (node->getExprType())
+    {
+    case ExpressionNodeType::Register:
+    {
+        RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(node);
+        return new ir::Operand(
+            ir::OperandKind::Register,
+            new ir::Type(ir::TypeKind::Integer,
+                         utils::getRegisterSize(regExpr->getRegister()->get_value())),
+            getSSAValueFromReg("%" + regExpr->getRegister()->get_value()));
+    }
+    break;
+    case ExpressionNodeType::Immediate:
+    {
+        ImmediateExpressionNode* immExpr = reinterpret_cast<ImmediateExpressionNode*>(node);
+        return new ir::Operand(ir::OperandKind::Immediate, new ir::Type(ir::TypeKind::Integer, 64),
+                               std::stoul(immExpr->getValue()->get_value()));
+    }
+    break;
+    default:
+    {
+        this->_diagMngr->log(DiagLevel::ICE, 0, "TODO generate operand from expression type %lu\n",
+                             node->getExprType());
+    }
+    break;
+    }
+    __builtin_unreachable();
+}
+std::vector<ir::Instruction*> IrGen::genExpr(ExpressionNode* node)
+{
+    switch (node->getExprType())
+    {
+    case ExpressionNodeType::Memory:
+    {
+        std::vector<ir::Instruction*> memInsts;
+        MemoryExpressionNode*         memExpr = reinterpret_cast<MemoryExpressionNode*>(node);
+        if (memExpr->getIndex())
+        {
+            ir::Operand* indexOperand =
+                this->genOperand(reinterpret_cast<ExpressionNode*>(memExpr->getIndex()));
+            ir::Operand* scaleOperand = nullptr;
+            if (memExpr->getScale())
+            {
+                scaleOperand =
+                    this->genOperand(reinterpret_cast<ExpressionNode*>(memExpr->getScale()));
+            }
+            else
+            {
+                scaleOperand = new ir::Operand(ir::OperandKind::Immediate,
+                                               new ir::Type(ir::TypeKind::Integer, 64), 1);
+            }
+            memInsts.push_back(
+                new ir::Instruction(ir::Opcode::Imul, {indexOperand, scaleOperand}, newResult()));
+        }
+        ir::Operand* baseOperand =
+            this->genOperand(reinterpret_cast<ExpressionNode*>(memExpr->getBase()));
+        if (memExpr->getIndex() == nullptr)
+        {
+            // Copy
+            memInsts.push_back(new ir::Instruction(ir::Opcode::Copy, {baseOperand}, newResult()));
+        }
+        else
+        {
+            // Add
+            ir::Operand* indexSSA =
+                new ir::Operand(ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, 64),
+                                instructionCount - 1);
+            memInsts.push_back(
+                new ir::Instruction(ir::Opcode::Add, {baseOperand, indexSSA}, newResult()));
+        }
+        if (memExpr->getDisplacement() != nullptr)
+        {
+            ir::Operand* indexBaseSSA =
+                new ir::Operand(ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, 64),
+                                instructionCount - 1);
+            memInsts.push_back(new ir::Instruction(
+                ir::Opcode::Add,
+                {this->genOperand(reinterpret_cast<ExpressionNode*>(memExpr->getDisplacement())),
+                 indexBaseSSA},
+                newResult()));
+        }
+        return memInsts;
+    }
+    break;
+    default:
+    {
+        this->_diagMngr->log(DiagLevel::ICE, 0,
+                             "TODO generate expression instructions from expression type %lu\n",
+                             node->getExprType());
+    }
+    break;
+    }
+    __builtin_unreachable();
+}
+static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* movInst)
+{
+    ExpressionNode*           destArg = reinterpret_cast<ExpressionNode*>(movInst->getArgs().at(0));
+    ExpressionNode*           srcArg  = reinterpret_cast<ExpressionNode*>(movInst->getArgs().at(1));
+    ir::Opcode                opcode;
+    std::vector<ir::Operand*> operands;
+    if (destArg->getExprType() == ExpressionNodeType::Register &&
+        srcArg->getExprType() == ExpressionNodeType::Immediate)
+    {
+        operands.push_back(builder->genOperand(srcArg));
+        opcode                          = ir::Opcode::Const;
+        std::string             result  = newResult();
+        RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        return {new ir::Instruction(opcode, operands, result)};
+    }
+    else if (destArg->getExprType() == ExpressionNodeType::Sized &&
+             srcArg->getExprType() == ExpressionNodeType::Immediate)
+    {
+        SizedExpressionNode* sizedExpr = reinterpret_cast<SizedExpressionNode*>(destArg);
+        if (sizedExpr->getExpr()->getExprType() != ExpressionNodeType::Memory)
+        {
+            std::printf("TODO: Handle non first sized arguments of type %lu\n",
+                        sizedExpr->getExpr()->getExprType());
+            std::exit(1);
+        }
+        std::vector<ir::Instruction*> memInsts      = builder->genExpr(sizedExpr->getExpr());
+        size_t                        destInstCount = instructionCount - 1;
+        ir::Operand*                  storeValueOperand =
+            builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
+        ir::Operand* storeSSA = new ir::Operand(
+            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+            destInstCount);
+        ir::Instruction* storeInst =
+            new ir::Instruction(ir::Opcode::Store, {storeSSA, storeValueOperand});
+        memInsts.push_back(storeInst);
+        return memInsts;
+    }
+    else if (destArg->getExprType() == ExpressionNodeType::Sized &&
+             srcArg->getExprType() == ExpressionNodeType::Register)
+    {
+        SizedExpressionNode* sizedExpr = reinterpret_cast<SizedExpressionNode*>(destArg);
+        if (sizedExpr->getExpr()->getExprType() != ExpressionNodeType::Memory)
+        {
+            std::printf("TODO: Handle non first sized arguments of type %lu\n",
+                        sizedExpr->getExpr()->getExprType());
+            std::exit(1);
+        }
+        std::vector<ir::Instruction*> memInsts      = builder->genExpr(sizedExpr->getExpr());
+        size_t                        destInstCount = instructionCount - 1;
+        ir::Operand*                  storeValueOperand =
+            builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
+        ir::Operand* storeSSA = new ir::Operand(
+            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+            destInstCount);
+        ir::Instruction* storeInst =
+            new ir::Instruction(ir::Opcode::Store, {storeSSA, storeValueOperand});
+        memInsts.push_back(storeInst);
+        return memInsts;
+    }
+    else if (destArg->getExprType() == ExpressionNodeType::Memory &&
+             srcArg->getExprType() == ExpressionNodeType::Register)
+    {
+        std::vector<ir::Instruction*> memInsts =
+            builder->genExpr(reinterpret_cast<ExpressionNode*>(destArg));
+        size_t       destInstCount = instructionCount - 1;
+        ir::Operand* storeValueOperand =
+            builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
+        ir::Operand* storeSSA = new ir::Operand(
+            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+            destInstCount);
+        ir::Instruction* storeInst =
+            new ir::Instruction(ir::Opcode::Store, {storeSSA, storeValueOperand});
+        memInsts.push_back(storeInst);
+        return memInsts;
+    }
+    else if (destArg->getExprType() == ExpressionNodeType::Register &&
+             srcArg->getExprType() == ExpressionNodeType::Sized)
+    {
+        SizedExpressionNode* sizedExpr = reinterpret_cast<SizedExpressionNode*>(srcArg);
+        if (sizedExpr->getExpr()->getExprType() != ExpressionNodeType::Memory)
+        {
+            std::printf("TODO: Handle non first sized arguments of type %lu\n",
+                        sizedExpr->getExpr()->getExprType());
+            std::exit(1);
+        }
+        std::vector<ir::Instruction*> memInsts      = builder->genExpr(sizedExpr->getExpr());
+        size_t                        destInstCount = instructionCount - 1;
+        ir::Operand*                  loadSSA       = new ir::Operand(
+            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+            destInstCount);
+        std::string      result   = newResult();
+        ir::Instruction* loadInst = new ir::Instruction(ir::Opcode::Load, {loadSSA}, result);
+        memInsts.push_back(loadInst);
+        RegisterExpressionNode* regExpr =
+            reinterpret_cast<RegisterExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        return memInsts;
+    }
+    else if (destArg->getExprType() == ExpressionNodeType::Register &&
+             srcArg->getExprType() == ExpressionNodeType::Memory)
+    {
+        std::vector<ir::Instruction*> memInsts      = builder->genExpr(srcArg);
+        size_t                        destInstCount = instructionCount - 1;
+        ir::Operand*                  loadSSA       = new ir::Operand(
+            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+            destInstCount);
+        std::string      result   = newResult();
+        ir::Instruction* loadInst = new ir::Instruction(ir::Opcode::Load, {loadSSA}, result);
+        memInsts.push_back(loadInst);
+        RegisterExpressionNode* regExpr =
+            reinterpret_cast<RegisterExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        return memInsts;
+    }
+    else if (destArg->getExprType() == ExpressionNodeType::Register &&
+             srcArg->getExprType() == ExpressionNodeType::Variable)
+    {
+        std::string      result    = newResult();
+        ir::Instruction* constInst = new ir::Instruction(
+            ir::Opcode::Const,
+            {new ir::Operand(
+                ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Pointer, 64),
+                reinterpret_cast<VariableExpressionNode*>(reinterpret_cast<ExpressionNode*>(srcArg))
+                    ->getName()
+                    ->get_value())},
+            result);
+        RegisterExpressionNode* regExpr =
+            reinterpret_cast<RegisterExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        return {constInst};
+    }
+    else
+    {
+        std::printf("TODO: MOV instruction with expr %lu and %lu\n", destArg->getExprType(),
+                    srcArg->getExprType());
+        std::exit(1);
+    }
+    __builtin_unreachable();
+}
+static std::vector<ir::Instruction*> genXor(IrGen* builder, InstructionNode* xorInst)
+{
+    (void)builder;
+    ExpressionNode*           destArg = reinterpret_cast<ExpressionNode*>(xorInst->getArgs().at(0));
+    ExpressionNode*           srcArg  = reinterpret_cast<ExpressionNode*>(xorInst->getArgs().at(1));
+    ir::Opcode                opcode;
+    std::vector<ir::Operand*> operands;
+    if (destArg->getExprType() == ExpressionNodeType::Register &&
+        srcArg->getExprType() == ExpressionNodeType::Register)
+    {
+        RegisterExpressionNode* destReg = reinterpret_cast<RegisterExpressionNode*>(destArg);
+        RegisterExpressionNode* srcReg  = reinterpret_cast<RegisterExpressionNode*>(srcArg);
+        if (destReg->getRegister()->get_value() == srcReg->getRegister()->get_value())
+        {
+            operands.push_back(new ir::Operand(ir::OperandKind::Immediate,
+                                               new ir::Type(ir::TypeKind::Integer, 64), 0));
+            opcode                          = ir::Opcode::Const;
+            std::string             result  = newResult();
+            RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
+            addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+            return {new ir::Instruction(opcode, operands, result)};
+        }
+        else
+        {
+            std::printf("TODO: XOR between regs %s and %s\n",
+                        destReg->getRegister()->get_value().c_str(),
+                        srcReg->getRegister()->get_value().c_str());
+            std::exit(1);
+        }
+    }
+    else
+    {
+        std::printf("TODO: XOR instruction with expr %lu and %lu\n", destArg->getExprType(),
+                    srcArg->getExprType());
+        std::exit(1);
+    }
+    __builtin_unreachable();
+}
+static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* callNode)
+{
+    (void)builder;
+    ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
+    if (destArg->getExprType() != ExpressionNodeType::Variable)
+    {
+        std::printf("TODO: Call to non variable %lu\n", destArg->getExprType());
+        std::exit(1);
+    }
+    VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(destArg);
+    std::string             result  = newResult();
+    ir::Instruction*        inst    = new ir::Instruction(
+        ir::Opcode::Call,
+        {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
+                                   varExpr->getName()->get_value())},
+        result);
+    addAlias(getSSAValueFromReg("%rax"), result);
+    return {inst};
+}
+static std::vector<ir::Instruction*> genJmp(IrGen* builder, InstructionNode* callNode)
+{
+    (void)builder;
+    ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
+    if (destArg->getExprType() != ExpressionNodeType::Variable)
+    {
+        std::printf("TODO: Jump to non variable %lu\n", destArg->getExprType());
+        std::exit(1);
+    }
+    VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(destArg);
+    ir::Instruction*        inst    = new ir::Instruction(
+        ir::Opcode::Branch,
+        {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
+                                   varExpr->getName()->get_value())});
+    return {inst};
+}
+static std::vector<ir::Instruction*> genRet(IrGen* builder, InstructionNode* retNode)
+{
+    (void)builder;
+    (void)retNode;
+    ir::Instruction* inst = new ir::Instruction(
+        ir::Opcode::Ret,
+        {new ir::Operand(ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, 64),
+                         std::stoul(getSSAValueFromReg("%rax").substr(1)))});
+    return {inst};
+}
+using GenFunc = std::function<std::vector<ir::Instruction*>(IrGen*, InstructionNode*)>;
+static std::unordered_map<std::string, GenFunc> generatorMap = {
+    {"mov", genMov}, {"xor", genXor}, {"call", genCall}, {"jmp", genJmp}, {"ret", genRet},
+};
+std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
+{
+    if (node->getAstNodeType() != AstNodeType::Instruction)
+    {
+        this->_diagMngr->log(DiagLevel::ICE, 0,
+                             "Generate instruction for non instruction node %lu\n",
+                             node->getAstNodeType());
+    }
+    InstructionNode* instNode = reinterpret_cast<InstructionNode*>(node);
+    auto             it       = generatorMap.find(instNode->getMnemonic()->get_value());
+    if (it != generatorMap.end())
+    {
+        return it->second(this, instNode);
+    }
+    this->_diagMngr->log(DiagLevel::ERROR, 0, "TODO: generate instruction `%s`\n",
+                         instNode->getMnemonic()->get_value().c_str());
+    __builtin_unreachable();
+}
+static std::vector<ir::Opcode> terminators = {ir::Opcode::Branch, ir::Opcode::Ret};
+static bool                    blockHasTerminator(ir::Block* block)
+{
+    ir::Instruction* last = nullptr;
+    for (ir::Instruction* inst : block->getInstructions())
+    {
+        last = inst;
+    }
+    if (last == nullptr)
+    {
+        return false;
+    }
+    return std::find(terminators.begin(), terminators.end(), last->getOpcode()) !=
+           terminators.end();
+}
+static void blockInsertTerminator(ir::Block* block, std::string nextBlockName)
+{
+    if (!blockHasTerminator(block))
+    {
+        block->addInstruction(new ir::Instruction(
+            ir::Opcode::Branch,
+            {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
+                             nextBlockName)}));
+    }
+}
+ir::Block* IrGen::genBlock(std::string name, std::vector<AstNode*> nodes)
+{
+    ir::Block* block = new ir::Block(name);
+    for (AstNode* node : nodes)
+    {
+        std::vector<ir::Instruction*> insts = this->genInstructions(node);
+        for (ir::Instruction* inst : insts)
+        {
+            block->addInstruction(inst);
+        }
+    }
+    return block;
+}
 ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
 {
+    aliasses.clear();
+    instructionCount = 0;
     OrderedMap<std::string, std::vector<AstNode*>> blocks;
     std::string                                    currentBlock = name;
     blocks.insert_or_assign(currentBlock, std::vector<AstNode*>({}));
@@ -27,20 +439,51 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
         }
         blocks.at(currentBlock).push_back(node);
     }
-    for (const auto& [name, nodes] : blocks)
+    Symbol*             sym     = this->_symTable->getSymbolByName(name);
+    SymbolBinding       symBind = sym->getSymbolBind();
+    ir::FunctionBinding funcBind;
+    if (symBind == SymbolBinding::Extern)
     {
-        std::printf("- %s\n", name.c_str());
-        for (AstNode* node : nodes)
+        funcBind = ir::FunctionBinding::Define;
+    }
+    else if (symBind == SymbolBinding::Local)
+    {
+        funcBind = ir::FunctionBinding::DeclareInternal;
+    }
+    else if (symBind == SymbolBinding::Global)
+    {
+        funcBind = ir::FunctionBinding::DeclareExternal;
+    }
+    else
+    {
+        this->_diagMngr->log(DiagLevel::ICE, 0,
+                             "Symbol `%s` binding is invalid and greater than allowed\n",
+                             name.c_str());
+        __builtin_unreachable();
+    }
+    ir::Function* func = new ir::Function(name, sym->getArgumentsCount(), funcBind);
+    if (symBind != SymbolBinding::Extern)
+    {
+        for (size_t i = 0; i < blocks.size(); ++i)
         {
-            if (node->getAstNodeType() == AstNodeType::Instruction)
+            std::string           name  = blocks.at(i).first;
+            std::vector<AstNode*> nodes = blocks.at(i).second;
+            ir::Block*            block = this->genBlock(name, nodes);
+            if (blocks.size() - 1 == i && !blockHasTerminator(block))
             {
-                InstructionNode* instNode = reinterpret_cast<InstructionNode*>(node);
-                std::printf("  - inst: %s\n", instNode->getMnemonic()->get_value().c_str());
+                this->_diagMngr->log(
+                    DiagLevel::ERROR, 0,
+                    "Expected a terminator instruction as last instruction of label `%s`\n",
+                    sym->getName().c_str());
             }
+            if (blocks.size() - 1 != i)
+            {
+                blockInsertTerminator(block, blocks.at(i + 1).first);
+            }
+            func->addBlock(block);
         }
     }
-    this->_diagMngr->log(DiagLevel::ICE, 0, "TODO: Emit function `%s`\n", name.c_str());
-    return nullptr;
+    return func;
 }
 ir::Section* IrGen::genSection(std::string name, std::vector<AstNode*> nodes)
 {
@@ -53,38 +496,76 @@ ir::Section* IrGen::genSection(std::string name, std::vector<AstNode*> nodes)
         if (node->getAstNodeType() == AstNodeType::Declaration)
         {
             DeclarationNode* declNode = reinterpret_cast<DeclarationNode*>(node);
-            if (declNode->getDeclType() != DeclarationNodeType::Label)
+            if (declNode->getDeclType() != DeclarationNodeType::Label &&
+                declNode->getDeclType() != DeclarationNodeType::Extern)
             {
                 this->_diagMngr->log(DiagLevel::ICE, 0,
                                      "A declaration node with type %lu slipped trough\n",
                                      declNode->getDeclType());
             }
-            LabelDeclarationNode* labelDecl = reinterpret_cast<LabelDeclarationNode*>(declNode);
-            Symbol* sym = this->_symTable->getSymbolByName(labelDecl->getName()->get_value());
-            if (sym->getSymbolKind() == SymbolKind::Function && !sym->getIsChild())
+            if (declNode->getDeclType() == DeclarationNodeType::Label)
             {
-                if (functions.contains(sym->getName()))
+                LabelDeclarationNode* labelDecl = reinterpret_cast<LabelDeclarationNode*>(declNode);
+                Symbol* sym = this->_symTable->getSymbolByName(labelDecl->getName()->get_value());
+                if (sym->getSymbolKind() == SymbolKind::Function && !sym->getIsChild())
                 {
-                    this->_diagMngr->log(DiagLevel::ERROR, 0,
-                                         "Redefinition of function body `%s`\n",
-                                         sym->getName().c_str());
+                    if (functions.contains(sym->getName()))
+                    {
+                        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                             "Redefinition of function body `%s`\n",
+                                             sym->getName().c_str());
+                    }
+                    functions.insert_or_assign(sym->getName(), std::vector<AstNode*>({}));
+                    currentFunction = sym->getName();
+                    currentObject.clear();
+                    continue;
                 }
-                functions.insert_or_assign(sym->getName(), std::vector<AstNode*>({}));
-                currentFunction = sym->getName();
-                currentObject.clear();
-                continue;
+                else if (sym->getSymbolKind() == SymbolKind::Object)
+                {
+                    if (functions.contains(sym->getName()))
+                    {
+                        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                             "Redefinition of object body `%s`\n",
+                                             sym->getName().c_str());
+                    }
+                    objects.insert_or_assign(sym->getName(), std::vector<AstNode*>({}));
+                    currentObject = sym->getName();
+                    currentFunction.clear();
+                    continue;
+                }
             }
-            else if (sym->getSymbolKind() == SymbolKind::Object)
+            else if (declNode->getDeclType() == DeclarationNodeType::Extern)
             {
-                if (functions.contains(sym->getName()))
+                ExternDeclarationNode* externDeclNode =
+                    reinterpret_cast<ExternDeclarationNode*>(declNode);
+                Symbol* sym =
+                    this->_symTable->getSymbolByName(externDeclNode->getName()->get_value());
+                if (sym->getSymbolKind() == SymbolKind::Function && !sym->getIsChild())
                 {
-                    this->_diagMngr->log(DiagLevel::ERROR, 0, "Redefinition of object body `%s`\n",
-                                         sym->getName().c_str());
+                    if (functions.contains(sym->getName()))
+                    {
+                        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                             "Redefinition of function body `%s`\n",
+                                             sym->getName().c_str());
+                    }
+                    functions.insert_or_assign(sym->getName(), std::vector<AstNode*>({}));
+                    currentFunction = sym->getName();
+                    currentObject.clear();
+                    continue;
                 }
-                objects.insert_or_assign(sym->getName(), std::vector<AstNode*>({}));
-                currentObject = sym->getName();
-                currentFunction.clear();
-                continue;
+                else if (sym->getSymbolKind() == SymbolKind::Object)
+                {
+                    if (functions.contains(sym->getName()))
+                    {
+                        this->_diagMngr->log(DiagLevel::ERROR, 0,
+                                             "Redefinition of object body `%s`\n",
+                                             sym->getName().c_str());
+                    }
+                    objects.insert_or_assign(sym->getName(), std::vector<AstNode*>({}));
+                    currentObject = sym->getName();
+                    currentFunction.clear();
+                    continue;
+                }
             }
         }
         if (!currentFunction.empty())
@@ -109,46 +590,8 @@ ir::Section* IrGen::genSection(std::string name, std::vector<AstNode*> nodes)
     }
     for (const auto& [name, nodes] : objects)
     {
-        std::printf("- %s\n", name.c_str());
-        for (AstNode* node : nodes)
-        {
-            std::printf("  - %lu\n", node->getAstNodeType());
-        }
         this->_diagMngr->log(DiagLevel::WARNING, 0, "TODO: Emit object `%s`\n", name.c_str());
     }
-    // for (AstNode* node : nodes)
-    // {
-    //     switch (node->getAstNodeType())
-    //     {
-    //     case AstNodeType::Declaration:
-    //     {
-    //         DeclarationNode* declNode = reinterpret_cast<DeclarationNode*>(node);
-    //         switch (declNode->getDeclType())
-    //         {
-    //         case DeclarationNodeType::Label: {
-    //             LabelDeclarationNode* labelDecl =
-    //             reinterpret_cast<LabelDeclarationNode*>(declNode);
-    //             section->addFunction(this->genFunction(labelDecl->getName()->get_value()));
-    //         } break;
-    //         default:
-    //         {
-    //             this->_diagMngr->log(DiagLevel::ICE, 0,
-    //                                  "Unhandled section generation declaration node type %lu\n",
-    //                                  declNode->getDeclType());
-    //         }
-    //         break;
-    //         }
-    //     }
-    //     break;
-    //     default:
-    //     {
-    //         this->_diagMngr->log(DiagLevel::ICE, 0, "Unhandled section generation node type
-    //         %lu\n",
-    //                              node->getAstNodeType());
-    //     }
-    //     break;
-    //     }
-    // }
     return section;
 }
 ir::Module* IrGen::genModule()
@@ -173,7 +616,8 @@ ir::Module* IrGen::genModule()
                 sectionName = sectionDecl->getName()->get_value();
                 continue;
             }
-            if (declNode->getDeclType() != DeclarationNodeType::Label)
+            if (declNode->getDeclType() != DeclarationNodeType::Label &&
+                declNode->getDeclType() != DeclarationNodeType::Extern)
             {
                 continue;
             }
@@ -183,7 +627,7 @@ ir::Module* IrGen::genModule()
     ir::Module* _module = new ir::Module;
     for (const auto& [name, nodes] : sections)
     {
-        this->genSection(name, nodes);
+        _module->addSection(this->genSection(name, nodes));
     }
     return _module;
 }

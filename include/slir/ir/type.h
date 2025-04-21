@@ -8,11 +8,13 @@ namespace assembler::ir::ir
 enum struct TypeKind
 {
     Integer,
+    Pointer,
+    Label,
 };
-class Type
+struct Type
 {
-  public:
-  private:
+    Type(TypeKind kind, uint8_t bitSize);
+    ~Type();
     union
     {
         uint8_t bitSize;
