@@ -1,9 +1,12 @@
 global main
 type main, function
+arguments main, 1
 type add1, function
+arguments add1, 1
 section .text
 add1:
-    inc rax
+    inc rdi
+    mov rax, rdi
     ret
 main:
     call add1

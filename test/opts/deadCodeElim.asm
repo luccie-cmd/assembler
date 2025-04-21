@@ -1,5 +1,6 @@
 global main
 type main, function
+arguments main, 0
 section .text
 main:
     jmp .used

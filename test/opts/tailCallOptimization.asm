@@ -1,6 +1,8 @@
 global main
 type main, function
+arguments main, 0
 type func, function
+arguments func, 0
 section .text
 func:
     ret
