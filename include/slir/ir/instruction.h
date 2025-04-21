@@ -12,7 +12,6 @@ enum struct Opcode
     None,
     
     Const,
-    Copy,
     
     Store,
     Load,

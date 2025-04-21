@@ -1,54 +1,54 @@
 ; .text {
-;   define function, @hello(i64 %rdi);
-;   declare external function, @main(i64 %rdi, i64 %rsi, i64 %rdx, i64 %rcx) {
-;       __begin__:
-;           %0 = const i64 0
-;           alias %rax, %0
-;           %1 = const i64 0
-;           alias %rdi, %1
-;           store %rdi, i64 10
-;           %2 = add i64 %rdi, i64 1
-;           store %2, i32 10
-;           %3 = add i64 %rdi, i64 %rcx
-;           store %3, i16 10
-;           %4 = imul i64 %rcx, i64 2
-;           %5 = add i64 %4, i64 %rdi
-;           store %5, i8 10
-;           %6 = imul i64 %rcx, i64 2
-;           %7 = add i64 %6, i64 %rdi
-;           %8 = add i64 %7, i32 10
-;           store %8, i64 %rax
-;           %9 = load i64 %rdi
-;           %10 = add i64 %rdi, 1
-;           %11 = load i32 %10
-;           %12 = add i64 %rdi, i64 %rcx
-;           %13 = load i16 %12
-;           %14 = imul i64 %rcx, i64 2
-;           %15 = add i64 %14, i64 %rdi
-;           %16 = load i16 %15
-;           %17 = imul i64 %rcx, i64 2
-;           %18 = add i64 %17, i64 %rdi
-;           %19 = add i64 %18, i64 10
-;           %20 = load i64 %19
-;           store %rdi, i64 %9
-;           %21 = add i64 %rdi, i64 1
-;           store %21, i32 %11
-;           %22 = add i64 %rdi, i64 %rcx
-;           store %22, i16 %13
-;           %23 = imul i64 %rcx, i64 2
-;           %24 = add i64 %23, i64 %rdi
-;           store %24, i8 %16
-;           %25 = ptr @str0
-;           br label i64 .local2
-;       .local2:
-;           %26 = call @hello (%25 as i64)
-;           br label i64 .local
-;       .local:
-;           ret i64 %26
-;   }
-; };
+;     2 function @hello(i64 %rdi);
+;     1 function @main(i64 %rdi, i64 %rsi, i64 %rdx, i64 %rcx){
+;         main:
+;             %0 = const i64 0
+;             %1 = const i64 0
+;             store i64 %1, i64 10
+;             %2 = add i64 1, i64 %1
+;             store i32 %2, i64 10
+;             %3 = imul i64 %rcx, i64 1
+;             %4 = add i64 %1, i64 %3
+;             store i16 %4, i64 10
+;             %5 = imul i64 %rcx, i64 2
+;             %6 = add i64 %1, i64 %5
+;             store i8 %6, i64 10
+;             %7 = imul i64 %rcx, i64 2
+;             %8 = add i64 %1, i64 %7
+;             %9 = add i64 10, i64 %8
+;             store i64 %9, i64 %0
+;             %10 = load i64 %1
+;             %11 = add i64 1, i64 %10
+;             %12 = load i32 %11
+;             %13 = imul i64 %rcx, i64 1
+;             %14 = add i64 %1, i64 %13
+;             %15 = load i16 %14
+;             %16 = imul i64 %rcx, i64 2
+;             %17 = add i64 %1, i64 %16
+;             %18 = load i8 %17
+;             %19 = imul i64 %rcx, i64 2
+;             %20 = add i64 %1, i64 %19
+;             %21 = add i64 10, i64 %20
+;             %22 = load i64 %21
+;             store i64 %1, i64 %10
+;             %23 = add i64 1, i64 %22
+;             store i32 %23, i32 %12
+;             %24 = imul i64 %rcx, i64 1
+;             %25 = add i64 %1, i64 %24
+;             store i16 %25, i16 %15
+;             %26 = imul i64 %rcx, i64 2
+;             %27 = add i64 %1, i64 %26
+;             store i8 %27, i8 %18
+;             %28 = const ptr @str0
+;             br label @main.local2
+;         main.local2:
+;             %29 = call label @hello
+;             br label @main.local
+;         main.local:
+;             ret i64 %29
+;     }
+; }
 ; .rodata {
-;   declare internal object @str0 = "Hello\0a\00Warning: Symbol name '.text' may conflict with section names and confuse linkers or debuggers.";
 ; }
 ; test globals
 global main

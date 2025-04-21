@@ -27,6 +27,7 @@ class OrderedMap
                 return kvPair.second;
             }
         }
+        std::printf("Out of range error\n");
         std::abort();
     }
     std::pair<Key, Value> at(size_t index){

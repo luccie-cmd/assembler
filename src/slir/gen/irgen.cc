@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <any>
 #include <deque>
 #include <functional>
 #include <slir/gen/irgen.h>
@@ -102,7 +103,8 @@ std::vector<ir::Instruction*> IrGen::genExpr(ExpressionNode* node)
         if (memExpr->getIndex() == nullptr)
         {
             // Copy
-            memInsts.push_back(new ir::Instruction(ir::Opcode::Copy, {baseOperand}, newResult()));
+            // memInsts.push_back(new ir::Instruction(ir::Opcode::Copy, {baseOperand},
+            // newResult()));
         }
         else
         {
@@ -163,13 +165,44 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
                         sizedExpr->getExpr()->getExprType());
             std::exit(1);
         }
-        std::vector<ir::Instruction*> memInsts      = builder->genExpr(sizedExpr->getExpr());
-        size_t                        destInstCount = instructionCount - 1;
-        ir::Operand*                  storeValueOperand =
+        std::vector<ir::Instruction*> memInsts = builder->genExpr(sizedExpr->getExpr());
+        std::any                      destInstCount;
+        if (memInsts.empty() || memInsts.size() == 0)
+        {
+            MemoryExpressionNode* memExpr =
+                reinterpret_cast<MemoryExpressionNode*>(sizedExpr->getExpr());
+            ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(memExpr->getBase());
+            if (baseExpr->getExprType() == ExpressionNodeType::Register)
+            {
+                RegisterExpressionNode* regExpr =
+                    reinterpret_cast<RegisterExpressionNode*>(baseExpr);
+                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+            }
+            else
+            {
+                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::exit(1);
+            }
+        }
+        else
+        {
+            destInstCount = instructionCount - 1;
+        }
+        ir::Operand* storeSSA;
+        if (destInstCount.type() == typeid(size_t))
+        {
+            storeSSA = new ir::Operand(ir::OperandKind::SSA,
+                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                       std::any_cast<size_t>(destInstCount));
+        }
+        else
+        {
+            storeSSA = new ir::Operand(ir::OperandKind::Register,
+                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                       std::any_cast<std::string>(destInstCount));
+        }
+        ir::Operand* storeValueOperand =
             builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
-        ir::Operand* storeSSA = new ir::Operand(
-            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-            destInstCount);
         ir::Instruction* storeInst =
             new ir::Instruction(ir::Opcode::Store, {storeSSA, storeValueOperand});
         memInsts.push_back(storeInst);
@@ -185,13 +218,44 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
                         sizedExpr->getExpr()->getExprType());
             std::exit(1);
         }
-        std::vector<ir::Instruction*> memInsts      = builder->genExpr(sizedExpr->getExpr());
-        size_t                        destInstCount = instructionCount - 1;
-        ir::Operand*                  storeValueOperand =
+        std::vector<ir::Instruction*> memInsts = builder->genExpr(sizedExpr->getExpr());
+        std::any                      destInstCount;
+        if (memInsts.empty() || memInsts.size() == 0)
+        {
+            MemoryExpressionNode* memExpr =
+                reinterpret_cast<MemoryExpressionNode*>(sizedExpr->getExpr());
+            ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(memExpr->getBase());
+            if (baseExpr->getExprType() == ExpressionNodeType::Register)
+            {
+                RegisterExpressionNode* regExpr =
+                    reinterpret_cast<RegisterExpressionNode*>(baseExpr);
+                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+            }
+            else
+            {
+                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::exit(1);
+            }
+        }
+        else
+        {
+            destInstCount = instructionCount - 1;
+        }
+        ir::Operand* storeSSA;
+        if (destInstCount.type() == typeid(size_t))
+        {
+            storeSSA = new ir::Operand(ir::OperandKind::SSA,
+                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                       std::any_cast<size_t>(destInstCount));
+        }
+        else
+        {
+            storeSSA = new ir::Operand(ir::OperandKind::Register,
+                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                       std::any_cast<std::string>(destInstCount));
+        }
+        ir::Operand* storeValueOperand =
             builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
-        ir::Operand* storeSSA = new ir::Operand(
-            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-            destInstCount);
         ir::Instruction* storeInst =
             new ir::Instruction(ir::Opcode::Store, {storeSSA, storeValueOperand});
         memInsts.push_back(storeInst);
@@ -202,12 +266,43 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
     {
         std::vector<ir::Instruction*> memInsts =
             builder->genExpr(reinterpret_cast<ExpressionNode*>(destArg));
-        size_t       destInstCount = instructionCount - 1;
+        std::any destInstCount;
+        if (memInsts.empty() || memInsts.size() == 0)
+        {
+            MemoryExpressionNode* memExpr =
+                reinterpret_cast<MemoryExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
+            ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(memExpr->getBase());
+            if (baseExpr->getExprType() == ExpressionNodeType::Register)
+            {
+                RegisterExpressionNode* regExpr =
+                    reinterpret_cast<RegisterExpressionNode*>(baseExpr);
+                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+            }
+            else
+            {
+                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::exit(1);
+            }
+        }
+        else
+        {
+            destInstCount = instructionCount - 1;
+        }
+        ir::Operand* storeSSA;
+        if (destInstCount.type() == typeid(size_t))
+        {
+            storeSSA = new ir::Operand(ir::OperandKind::SSA,
+                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                       std::any_cast<size_t>(destInstCount));
+        }
+        else
+        {
+            storeSSA = new ir::Operand(ir::OperandKind::Register,
+                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                       std::any_cast<std::string>(destInstCount));
+        }
         ir::Operand* storeValueOperand =
             builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
-        ir::Operand* storeSSA = new ir::Operand(
-            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-            destInstCount);
         ir::Instruction* storeInst =
             new ir::Instruction(ir::Opcode::Store, {storeSSA, storeValueOperand});
         memInsts.push_back(storeInst);
@@ -223,11 +318,42 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
                         sizedExpr->getExpr()->getExprType());
             std::exit(1);
         }
-        std::vector<ir::Instruction*> memInsts      = builder->genExpr(sizedExpr->getExpr());
-        size_t                        destInstCount = instructionCount - 1;
-        ir::Operand*                  loadSSA       = new ir::Operand(
-            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-            destInstCount);
+        std::vector<ir::Instruction*> memInsts = builder->genExpr(sizedExpr->getExpr());
+        std::any                      destInstCount;
+        if (memInsts.empty() || memInsts.size() == 0)
+        {
+            MemoryExpressionNode* memExpr = reinterpret_cast<MemoryExpressionNode*>(
+                reinterpret_cast<ExpressionNode*>(sizedExpr->getExpr()));
+            ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(memExpr->getBase());
+            if (baseExpr->getExprType() == ExpressionNodeType::Register)
+            {
+                RegisterExpressionNode* regExpr =
+                    reinterpret_cast<RegisterExpressionNode*>(baseExpr);
+                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+            }
+            else
+            {
+                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::exit(1);
+            }
+        }
+        else
+        {
+            destInstCount = instructionCount - 1;
+        }
+        ir::Operand* loadSSA;
+        if (destInstCount.type() == typeid(size_t))
+        {
+            loadSSA = new ir::Operand(ir::OperandKind::SSA,
+                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                      std::any_cast<size_t>(destInstCount));
+        }
+        else
+        {
+            loadSSA = new ir::Operand(ir::OperandKind::Register,
+                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                      std::any_cast<std::string>(destInstCount));
+        }
         std::string      result   = newResult();
         ir::Instruction* loadInst = new ir::Instruction(ir::Opcode::Load, {loadSSA}, result);
         memInsts.push_back(loadInst);
@@ -239,11 +365,42 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
     else if (destArg->getExprType() == ExpressionNodeType::Register &&
              srcArg->getExprType() == ExpressionNodeType::Memory)
     {
-        std::vector<ir::Instruction*> memInsts      = builder->genExpr(srcArg);
-        size_t                        destInstCount = instructionCount - 1;
-        ir::Operand*                  loadSSA       = new ir::Operand(
-            ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-            destInstCount);
+        std::vector<ir::Instruction*> memInsts = builder->genExpr(srcArg);
+        std::any                      destInstCount;
+        if (memInsts.empty() || memInsts.size() == 0)
+        {
+            MemoryExpressionNode* memExpr =
+                reinterpret_cast<MemoryExpressionNode*>(reinterpret_cast<ExpressionNode*>(srcArg));
+            ExpressionNode* baseExpr = reinterpret_cast<ExpressionNode*>(memExpr->getBase());
+            if (baseExpr->getExprType() == ExpressionNodeType::Register)
+            {
+                RegisterExpressionNode* regExpr =
+                    reinterpret_cast<RegisterExpressionNode*>(baseExpr);
+                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+            }
+            else
+            {
+                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::exit(1);
+            }
+        }
+        else
+        {
+            destInstCount = instructionCount - 1;
+        }
+        ir::Operand* loadSSA;
+        if (destInstCount.type() == typeid(size_t))
+        {
+            loadSSA = new ir::Operand(ir::OperandKind::SSA,
+                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                      std::any_cast<size_t>(destInstCount));
+        }
+        else
+        {
+            loadSSA = new ir::Operand(ir::OperandKind::Register,
+                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                      std::any_cast<std::string>(destInstCount));
+        }
         std::string      result   = newResult();
         ir::Instruction* loadInst = new ir::Instruction(ir::Opcode::Load, {loadSSA}, result);
         memInsts.push_back(loadInst);
