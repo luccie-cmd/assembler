@@ -3,11 +3,11 @@
 
 namespace assembler
 {
-DirectBytesNode::DirectBytesNode(uint8_t bytesPerArg, std::vector<AstNode*> args)
+DirectBytesNode::DirectBytesNode(uint8_t _bytesPerArg, std::vector<AstNode*> _args)
     : AstNode(AstNodeType::Direct)
 {
-    this->bytesPerArg = bytesPerArg;
-    this->args        = args;
+    this->bytesPerArg = _bytesPerArg;
+    this->args        = _args;
 }
 DirectBytesNode::~DirectBytesNode() {}
 void DirectBytesNode::print(size_t spacing)

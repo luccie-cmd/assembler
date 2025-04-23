@@ -11,10 +11,10 @@ ExpressionNodeType ExpressionNode::getExprType()
 {
     return this->expressionType;
 }
-RegisterExpressionNode::RegisterExpressionNode(Token* _register)
+RegisterExpressionNode::RegisterExpressionNode(Token* __register)
     : ExpressionNode(ExpressionNodeType::Register)
 {
-    this->_register = _register;
+    this->_register = __register;
 }
 RegisterExpressionNode::~RegisterExpressionNode() {}
 void RegisterExpressionNode::print(size_t spacing)
@@ -208,11 +208,11 @@ void StringExpressionNode::print(size_t spacing)
     (void)spacing;
     std::printf("TODO: Print string expression nodes\n");
 }
-SizedExpressionNode::SizedExpressionNode(size_t size, ExpressionNode* expr)
+SizedExpressionNode::SizedExpressionNode(size_t _size, ExpressionNode* _expr)
     : ExpressionNode(ExpressionNodeType::Sized)
 {
-    this->expr = expr;
-    this->size = size;
+    this->expr = _expr;
+    this->size = _size;
 }
 SizedExpressionNode::~SizedExpressionNode() {}
 void SizedExpressionNode::print(size_t spacing)

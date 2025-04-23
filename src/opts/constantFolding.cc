@@ -5,9 +5,9 @@
 
 namespace assembler::opts
 {
-ConstantFoldingPass::ConstantFoldingPass(bool fold)
+ConstantFoldingPass::ConstantFoldingPass(bool _fold)
 {
-    this->fold = fold;
+    this->fold = _fold;
     this->name = "Constant Folding";
 }
 ConstantFoldingPass::~ConstantFoldingPass() {}

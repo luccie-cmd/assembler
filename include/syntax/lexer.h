@@ -13,17 +13,17 @@ namespace assembler
 class Lexer
 {
   public:
-    Lexer(std::string data, DiagManager* diagMngr)
+    Lexer(std::string _data, DiagManager* _diagMngr)
     {
-        if (data.size() == 0)
+        if (_data.size() == 0)
         {
             diagMngr->log(DiagLevel::ERROR, 0, "We didn't get any data, so no parsing\n");
             return;
         }
-        this->data     = data;
+        this->data     = _data;
         this->curr     = 0;
         this->c        = this->data.at(this->curr++);
-        this->diagMngr = diagMngr;
+        this->diagMngr = _diagMngr;
     }
     void                removeWhitespace();
     Token*              nextToken();

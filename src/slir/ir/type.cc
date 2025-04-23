@@ -2,9 +2,9 @@
 
 namespace assembler::ir::ir
 {
-Type::Type(TypeKind kind, uint8_t bitSize)
+Type::Type(TypeKind _kind, uint8_t _bitSize)
 {
-    this->kind    = kind;
-    this->bitSize = bitSize;
+    this->kind    = _kind;
+    this->bitSize = _bitSize;
 }
 }; // namespace assembler::ir::ir

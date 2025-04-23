@@ -2,9 +2,9 @@
 
 namespace assembler::ir::ir
 {
-Section::Section(std::string name)
+Section::Section(std::string _name)
 {
-    this->name = name;
+    this->name = _name;
 }
 Section::~Section() {}
 void Section::print()

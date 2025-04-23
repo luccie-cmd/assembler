@@ -51,10 +51,10 @@ class Token
     TokenType   type;
 
   public:
-    Token(std::string value, TokenType type)
+    Token(std::string _value, TokenType _type)
     {
-        this->value = value;
-        this->type  = type;
+        this->value = _value;
+        this->type  = _type;
     }
     std::string& get_value()
     {
@@ -64,13 +64,13 @@ class Token
     {
         return this->type;
     };
-    void set_value(std::string value)
+    void set_value(std::string _value)
     {
-        this->value = value;
+        this->value = _value;
     }
-    void set_type(TokenType type)
+    void set_type(TokenType _type)
     {
-        this->type = type;
+        this->type = _type;
     }
 };
 } // namespace assembler

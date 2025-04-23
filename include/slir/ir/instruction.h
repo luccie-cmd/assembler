@@ -18,11 +18,14 @@ enum struct Opcode
 
     Xor,
     Add,
+    Sub,
     Imul,
     
     Branch,
     Call,
     Ret,
+
+    Push,
 };
 class Instruction
 {

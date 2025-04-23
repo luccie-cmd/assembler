@@ -33,14 +33,14 @@ std::vector<Symbol*> SymbolTable::getSymbols()
 {
     return this->_symbols;
 }
-Symbol::Symbol(SymbolBinding symbolBind, std::string name, bool isDefinedByLabel)
+Symbol::Symbol(SymbolBinding _symbolBind, std::string _name, bool _isDefinedByLabel)
 {
-    this->symbolBind       = symbolBind;
+    this->symbolBind       = _symbolBind;
     this->symbolKind       = SymbolKind::Unset;
-    this->name             = name;
-    this->isDefinedByLabel = isDefinedByLabel;
-    this->argumentCount    = -1;
+    this->isDefinedByLabel = _isDefinedByLabel;
+    this->argumentCount    = static_cast<size_t>(-1);
     this->isChild          = false;
+    this->name             = std::move(_name);
 }
 Symbol::~Symbol() {}
 std::string Symbol::getName()
@@ -75,12 +75,12 @@ void Symbol::setSymbolKind(SymbolKind kind)
 {
     this->symbolKind = kind;
 }
-void Symbol::setIsDefinedByLabel(bool isDefinedByLabel)
+void Symbol::setIsDefinedByLabel(bool _isDefinedByLabel)
 {
-    this->isDefinedByLabel = isDefinedByLabel;
+    this->isDefinedByLabel = _isDefinedByLabel;
 }
-void Symbol::setIsChild(bool isChild)
+void Symbol::setIsChild(bool _isChild)
 {
-    this->isChild = isChild;
+    this->isChild = _isChild;
 }
 }; // namespace assembler

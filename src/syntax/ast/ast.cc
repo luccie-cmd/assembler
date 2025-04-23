@@ -2,9 +2,9 @@
 
 namespace assembler
 {
-Ast::Ast(std::vector<AstNode*> nodes)
+Ast::Ast(std::vector<AstNode*> _nodes)
 {
-    this->nodes = nodes;
+    this->nodes = _nodes;
 }
 Ast::~Ast() {}
 void Ast::print()

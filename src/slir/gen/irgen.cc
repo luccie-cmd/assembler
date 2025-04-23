@@ -44,6 +44,7 @@ static std::string newResult()
 }
 ir::Operand* IrGen::genOperand(ExpressionNode* node)
 {
+    std::printf("Generating %lu\n", (size_t)node->getExprType());
     switch (node->getExprType())
     {
     case ExpressionNodeType::Register:
@@ -61,6 +62,14 @@ ir::Operand* IrGen::genOperand(ExpressionNode* node)
         ImmediateExpressionNode* immExpr = reinterpret_cast<ImmediateExpressionNode*>(node);
         return new ir::Operand(ir::OperandKind::Immediate, new ir::Type(ir::TypeKind::Integer, 64),
                                std::stoul(immExpr->getValue()->get_value()));
+    }
+    break;
+    case ExpressionNodeType::Variable:
+    {
+        VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(node);
+        std::printf("varExpr: %s\n", varExpr->getName()->get_value().c_str());
+        return new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Pointer, 64),
+                               varExpr->getName()->get_value());
     }
     break;
     default:
@@ -100,15 +109,8 @@ std::vector<ir::Instruction*> IrGen::genExpr(ExpressionNode* node)
         }
         ir::Operand* baseOperand =
             this->genOperand(reinterpret_cast<ExpressionNode*>(memExpr->getBase()));
-        if (memExpr->getIndex() == nullptr)
+        if (memExpr->getIndex() != nullptr)
         {
-            // Copy
-            // memInsts.push_back(new ir::Instruction(ir::Opcode::Copy, {baseOperand},
-            // newResult()));
-        }
-        else
-        {
-            // Add
             ir::Operand* indexSSA =
                 new ir::Operand(ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, 64),
                                 instructionCount - 1);
@@ -162,7 +164,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         if (sizedExpr->getExpr()->getExprType() != ExpressionNodeType::Memory)
         {
             std::printf("TODO: Handle non first sized arguments of type %lu\n",
-                        sizedExpr->getExpr()->getExprType());
+                        (size_t)sizedExpr->getExpr()->getExprType());
             std::exit(1);
         }
         std::vector<ir::Instruction*> memInsts = builder->genExpr(sizedExpr->getExpr());
@@ -215,7 +217,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         if (sizedExpr->getExpr()->getExprType() != ExpressionNodeType::Memory)
         {
             std::printf("TODO: Handle non first sized arguments of type %lu\n",
-                        sizedExpr->getExpr()->getExprType());
+                        (size_t)sizedExpr->getExpr()->getExprType());
             std::exit(1);
         }
         std::vector<ir::Instruction*> memInsts = builder->genExpr(sizedExpr->getExpr());
@@ -233,7 +235,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             }
             else
             {
-                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::printf("TODO: generate mov sized, reg mov with non register base\n");
                 std::exit(1);
             }
         }
@@ -280,7 +282,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             }
             else
             {
-                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::printf("TODO: generate mov mem, reg mov with non register base\n");
                 std::exit(1);
             }
         }
@@ -315,7 +317,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         if (sizedExpr->getExpr()->getExprType() != ExpressionNodeType::Memory)
         {
             std::printf("TODO: Handle non first sized arguments of type %lu\n",
-                        sizedExpr->getExpr()->getExprType());
+                        (size_t)sizedExpr->getExpr()->getExprType());
             std::exit(1);
         }
         std::vector<ir::Instruction*> memInsts = builder->genExpr(sizedExpr->getExpr());
@@ -333,7 +335,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             }
             else
             {
-                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::printf("TODO: generate mov reg, sized mov with non register base\n");
                 std::exit(1);
             }
         }
@@ -378,9 +380,15 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
                 destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
             }
+            else if (baseExpr->getExprType() == ExpressionNodeType::Variable)
+            {
+                VariableExpressionNode* varExpr =
+                    reinterpret_cast<VariableExpressionNode*>(baseExpr);
+                destInstCount = std::string("@" + varExpr->getName()->get_value()).c_str();
+            }
             else
             {
-                std::printf("TODO: generate mov sized, imm mov with non register base\n");
+                std::printf("TODO: generate mov reg, mem mov with non register base\n");
                 std::exit(1);
             }
         }
@@ -394,6 +402,12 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             loadSSA = new ir::Operand(ir::OperandKind::SSA,
                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
                                       std::any_cast<size_t>(destInstCount));
+        }
+        else if (destInstCount.type() == typeid(const char*))
+        {
+            loadSSA = new ir::Operand(ir::OperandKind::Variable,
+                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                      std::string(std::any_cast<const char*>(destInstCount)));
         }
         else
         {
@@ -428,8 +442,8 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
     }
     else
     {
-        std::printf("TODO: MOV instruction with expr %lu and %lu\n", destArg->getExprType(),
-                    srcArg->getExprType());
+        std::printf("TODO: MOV instruction with expr %lu and %lu\n", (size_t)destArg->getExprType(),
+                    (size_t)srcArg->getExprType());
         std::exit(1);
     }
     __builtin_unreachable();
@@ -466,8 +480,8 @@ static std::vector<ir::Instruction*> genXor(IrGen* builder, InstructionNode* xor
     }
     else
     {
-        std::printf("TODO: XOR instruction with expr %lu and %lu\n", destArg->getExprType(),
-                    srcArg->getExprType());
+        std::printf("TODO: XOR instruction with expr %lu and %lu\n", (size_t)destArg->getExprType(),
+                    (size_t)srcArg->getExprType());
         std::exit(1);
     }
     __builtin_unreachable();
@@ -478,7 +492,7 @@ static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* ca
     ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
     if (destArg->getExprType() != ExpressionNodeType::Variable)
     {
-        std::printf("TODO: Call to non variable %lu\n", destArg->getExprType());
+        std::printf("TODO: Call to non variable %lu\n", (size_t)destArg->getExprType());
         std::exit(1);
     }
     VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(destArg);
@@ -497,7 +511,7 @@ static std::vector<ir::Instruction*> genJmp(IrGen* builder, InstructionNode* cal
     ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
     if (destArg->getExprType() != ExpressionNodeType::Variable)
     {
-        std::printf("TODO: Jump to non variable %lu\n", destArg->getExprType());
+        std::printf("TODO: Jump to non variable %lu\n", (size_t)destArg->getExprType());
         std::exit(1);
     }
     VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(destArg);
@@ -517,10 +531,43 @@ static std::vector<ir::Instruction*> genRet(IrGen* builder, InstructionNode* ret
                          std::stoul(getSSAValueFromReg("%rax").substr(1)))});
     return {inst};
 }
+static std::vector<ir::Instruction*> genPush(IrGen* builder, InstructionNode* pushNode)
+{
+    (void)builder;
+    if (pushNode->getInstSize() != 64)
+    {
+        std::printf("TODO: Generate non 64 bit pushes\n");
+        std::exit(1);
+    }
+    std::printf("TODO: Generate 64 bit push\n");
+    return {};
+}
+static std::vector<ir::Instruction*> genPop(IrGen* builder, InstructionNode* popNode)
+{
+    (void)builder;
+    if (popNode->getInstSize() != 64)
+    {
+        std::printf("TODO: Generate non 64 bit pops\n");
+        std::exit(1);
+    }
+    std::printf("TODO: Generate 64 bit pop\n");
+    return {};
+}
+static std::vector<ir::Instruction*> genAdd(IrGen* builder, InstructionNode* addNode)
+{
+    (void)builder;
+    if (addNode->getInstSize() != 64)
+    {
+        std::printf("TODO: Generate non 64 bit adds\n");
+        std::exit(1);
+    }
+    std::printf("TODO: Generate 64 bit add\n");
+    return {};
+}
 using GenFunc = std::function<std::vector<ir::Instruction*>(IrGen*, InstructionNode*)>;
 static std::unordered_map<std::string, GenFunc> generatorMap = {
-    {"mov", genMov}, {"xor", genXor}, {"call", genCall}, {"jmp", genJmp}, {"ret", genRet},
-};
+    {"mov", genMov}, {"xor", genXor},   {"call", genCall}, {"jmp", genJmp},
+    {"ret", genRet}, {"push", genPush}, {"pop", genPop},   {"add", genAdd}};
 std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
 {
     if (node->getAstNodeType() != AstNodeType::Instruction)
@@ -558,10 +605,10 @@ static void blockInsertTerminator(ir::Block* block, std::string nextBlockName)
 {
     if (!blockHasTerminator(block))
     {
-        block->addInstruction(new ir::Instruction(
-            ir::Opcode::Branch,
-            {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
-                             nextBlockName)}));
+        ir::Type*        type    = new ir::Type(ir::TypeKind::Label, 64);
+        ir::Operand*     operand = new ir::Operand(ir::OperandKind::Variable, type, nextBlockName);
+        ir::Instruction* inst    = new ir::Instruction(ir::Opcode::Branch, {operand});
+        block->addInstruction(inst);
     }
 }
 ir::Block* IrGen::genBlock(std::string name, std::vector<AstNode*> nodes)
@@ -623,9 +670,9 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
     {
         for (size_t i = 0; i < blocks.size(); ++i)
         {
-            std::string           name  = blocks.at(i).first;
-            std::vector<AstNode*> nodes = blocks.at(i).second;
-            ir::Block*            block = this->genBlock(name, nodes);
+            std::string           _name  = blocks.at(i).first;
+            std::vector<AstNode*> _nodes = blocks.at(i).second;
+            ir::Block*            block  = this->genBlock(_name, _nodes);
             if (blocks.size() - 1 == i && !blockHasTerminator(block))
             {
                 this->_diagMngr->log(
@@ -741,13 +788,13 @@ ir::Section* IrGen::genSection(std::string name, std::vector<AstNode*> nodes)
         }
     }
     ir::Section* section = new ir::Section(name);
-    for (const auto& [name, nodes] : functions)
+    for (const auto& [_name, _nodes] : functions)
     {
-        section->addFunction(this->genFunction(name, nodes));
+        section->addFunction(this->genFunction(_name, _nodes));
     }
-    for (const auto& [name, nodes] : objects)
+    for (const auto& [_name, _nodes] : objects)
     {
-        this->_diagMngr->log(DiagLevel::WARNING, 0, "TODO: Emit object `%s`\n", name.c_str());
+        this->_diagMngr->log(DiagLevel::WARNING, 0, "TODO: Emit object `%s`\n", _name.c_str());
     }
     return section;
 }

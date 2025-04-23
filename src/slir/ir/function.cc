@@ -2,10 +2,10 @@
 
 namespace assembler::ir::ir
 {
-Function::Function(std::string name, size_t arguments, FunctionBinding bind)
+Function::Function(std::string _name, size_t _arguments, FunctionBinding bind)
 {
-    this->name      = name;
-    this->arguments = arguments;
+    this->name      = _name;
+    this->arguments = _arguments;
     this->funcBind  = bind;
     if (this->arguments == (size_t)-1)
     {
@@ -36,7 +36,7 @@ void Function::print(size_t spacing)
     {
         std::putchar(' ');
     }
-    std::printf("%lu function @%s(", this->funcBind, this->name.c_str());
+    std::printf("%lu function @%s(", (size_t)this->funcBind, this->name.c_str());
     for (size_t i = 0; i < this->arguments; ++i)
     {
         std::printf("i64 %%%s", nToArg(i));

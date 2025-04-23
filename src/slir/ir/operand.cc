@@ -2,17 +2,17 @@
 
 namespace assembler::ir::ir
 {
-Operand::Operand(OperandKind kind, Type* type, std::string reg)
+Operand::Operand(OperandKind _kind, Type* _type, std::string _reg)
 {
-    this->kind = kind;
-    this->type = type;
-    this->reg  = reg;
+    this->kind = _kind;
+    this->type = _type;
+    this->reg  = _reg.c_str();
 }
-Operand::Operand(OperandKind kind, Type* type, uint64_t val)
+Operand::Operand(OperandKind _kind, Type* _type, uint64_t _imm)
 {
-    this->kind = kind;
-    this->type = type;
-    this->imm  = val;
+    this->kind = _kind;
+    this->type = _type;
+    this->imm  = _imm;
 }
 OperandKind Operand::getOperandKind()
 {
@@ -55,7 +55,7 @@ void Operand::print()
     }
     else
     {
-        std::printf("TODO: Print operandKind %lu\n", this->kind);
+        std::printf("TODO: Print operandKind %lu\n", (size_t)this->kind);
         std::exit(1);
     }
 }

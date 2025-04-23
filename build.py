@@ -56,10 +56,12 @@ if os.path.exists("./script/config.py.old"):
     OLD_CONFIG = readConfig("./script/config.py.old")
 ALLOWED_CONFIG = [
     ["config", ["release", "debug"], True],
-    ["compiler", ["clang"], True],
+    ["compiler", ["clang", "gcc"], True],
     ["outDir", [], True],
     ["analyzer", ["yes", "no"], True],
-    ["lto", ["yes", "no"], True]
+    ["lto", ["yes", "no"], True],
+    ["asan", ["yes", "no"], True],
+    ["usan", ["yes", "no"], True]
 ]
 if not checkConfig(CONFIG, ALLOWED_CONFIG):
     print("Invalid config file.")
@@ -80,13 +82,16 @@ force_rebuild = False
 if OLD_CONFIG != CONFIG:
     force_rebuild = True
     print("Configuration changed, rebuilding...")
-CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-PIE', '-fno-PIC', '-fomit-frame-pointer', '-g0', '-funsafe-math-optimizations -ffast-math']
+CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-omit-frame-pointer', '-ggdb', '-funsafe-math-optimizations -ffast-math']
 CONFIG["CFLAGS"] += ["-O0", '-DNDEBUG']
-CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wno-shadow', '-Wno-unused-private-field']
+CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wshadow']
 CONFIG["CXXFLAGS"] = ['-fno-exceptions']
 CONFIG["ASFLAGS"] = ['-felf64']
-CONFIG["LDFLAGS"] = ['-Wl,--gc-sections', '-Wl,--build-id=none', '-fno-PIE', '-fno-PIC', '-O3', '-march=native', '-mtune=native']
+CONFIG["LDFLAGS"] = ['-Wl,--gc-sections', '-Wl,--build-id=none', '-O0', '-march=native', '-mtune=native']
 CONFIG["INCPATHS"] = ['-Iinclude']
+
+if "gcc" in CONFIG.get("compiler"):
+    CONFIG["CFLAGS"] += ['-fmax-errors=1']
 
 if "yes" in CONFIG.get("analyzer"):
     CONFIG["CFLAGS"].append("-fanalyzer")
@@ -102,6 +107,14 @@ if "yes" in CONFIG.get("lto"):
 else:
     CONFIG["CFLAGS"] += ['-fno-lto']
     CONFIG["LDFLAGS"] += ['-fno-lto']
+
+if "yes" in CONFIG.get("asan"):
+    CONFIG["CFLAGS"] += ['-fsanitize=address']
+    CONFIG["LDFLAGS"] += ['-fsanitize=address']
+
+if "yes" in CONFIG.get("usan"):
+    CONFIG["CFLAGS"] += ['-fsanitize=undefined']
+    CONFIG["LDFLAGS"] += ['-fsanitize=undefined']
 
 stopEvent = threading.Event()
 
@@ -124,9 +137,7 @@ if not compareFiles('build.py', '.build-cache/build.py'):
 def removeOptnone(file):
     callCmd(f"sed s/optnone//g {file} > {file}.clean")
     callCmd(f"sed s/noinline//g {file}.clean > {file}.clean2")
-    callCmd(f"sed s/uwtable//g {file}.clean2 > {file}.clean3")
-    callCmd(f"rm -f {file}.clean2") 
-    callCmd(f"mv {file}.clean3 {file}.clean")
+    callCmd(f"mv {file}.clean2 {file}.clean")
 
 
 def checkExtension(file: str, valid_extensions: list[str]):
@@ -271,7 +282,7 @@ def buildC(file):
     command = compiler + " " + file
     for option in options:
         command += " " + option
-    if compiler == "g++":
+    if compiler == "gcc":
         print(f"CXX   {file}")
         command += f" -o {CONFIG['outDir'][0]}/{file}.o"
         return callCmd(command, True)[0]
@@ -584,12 +595,14 @@ def main():
     basename = os.path.basename(os.path.dirname(os.path.realpath(__file__)))
     if "clean" in sys.argv:
         callCmd(f"rm -rf ./.build-cache/{basename}")
-        callCmd(f"rm -rf {CONFIG['outDir'][0]}")
+        callCmd(f"rm -rf {CONFIG['outDir'][0]}/")
     if "clean-all" in sys.argv:
         callCmd(f"rm -rf ./.build-cache/{basename}")
-        callCmd(f"rm -rf {CONFIG['outDir'][0]}")
+        callCmd(f"rm -rf {CONFIG['outDir'][0]}/")
     if force_rebuild:
         print("Rebuilding...")
+        callCmd(f"rm -rf ./.build-cache/{basename}")
+        callCmd(f"rm -rf {CONFIG['outDir'][0]}/")
     print("> Creating necesarry dirs")
     callCmd(f"mkdir -p {CONFIG['outDir'][0]}")
     if "compile" in sys.argv:

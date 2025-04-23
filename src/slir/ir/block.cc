@@ -2,9 +2,9 @@
 
 namespace assembler::ir::ir
 {
-Block::Block(std::string name)
+Block::Block(std::string _name)
 {
-    this->name = name;
+    this->name = _name;
 }
 Block::~Block() {}
 void Block::addInstruction(Instruction* inst)

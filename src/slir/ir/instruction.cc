@@ -19,16 +19,16 @@ static std::string convertOpcodeToString(Opcode opcode)
     std::printf("Opcode %lu not found\n", (size_t)opcode);
     std::exit(1);
 }
-Instruction::Instruction(Opcode opcode, std::vector<Operand*> operands, std::string result)
+Instruction::Instruction(Opcode _opcode, std::vector<Operand*> _operands, std::string _result)
 {
-    this->opcode   = opcode;
-    this->operands = operands;
-    this->result   = result;
+    this->opcode   = _opcode;
+    this->operands = _operands;
+    this->result   = _result;
 }
-Instruction::Instruction(Opcode opcode, std::vector<Operand*> operands)
+Instruction::Instruction(Opcode _opcode, std::vector<Operand*> _operands)
 {
-    this->opcode   = opcode;
-    this->operands = operands;
+    this->opcode   = _opcode;
+    this->operands = _operands;
     this->result   = "";
 }
 void Instruction::print(size_t spacing)
