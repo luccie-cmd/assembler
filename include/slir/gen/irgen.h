@@ -17,6 +17,7 @@ class IrGen
     ir::Module*  genModule();
     ir::Operand* genOperand(ExpressionNode* node);
     std::vector<ir::Instruction*> genExpr(ExpressionNode* node);
+    Symbol* getSymbolByName(std::string name);
 
   private:
     std::vector<ir::Instruction*> genInstructions(AstNode* node);

@@ -19,7 +19,7 @@ SemanticAnalyzer::SemanticAnalyzer(Ast* inAst, DiagManager* diagManager)
 {
     this->_ast      = inAst;
     this->_diagMngr = diagManager;
-    this->_symTable = new SymbolTable;
+    this->_symTable = new SymbolTable();
 }
 SemanticAnalyzer::~SemanticAnalyzer()
 {

@@ -44,17 +44,17 @@ static std::string newResult()
 }
 ir::Operand* IrGen::genOperand(ExpressionNode* node)
 {
-    std::printf("Generating %lu\n", (size_t)node->getExprType());
     switch (node->getExprType())
     {
     case ExpressionNodeType::Register:
     {
         RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(node);
+        std::string ssaValue = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
         return new ir::Operand(
             ir::OperandKind::Register,
             new ir::Type(ir::TypeKind::Integer,
                          utils::getRegisterSize(regExpr->getRegister()->get_value())),
-            getSSAValueFromReg("%" + regExpr->getRegister()->get_value()));
+            ssaValue);
     }
     break;
     case ExpressionNodeType::Immediate:
@@ -67,9 +67,10 @@ ir::Operand* IrGen::genOperand(ExpressionNode* node)
     case ExpressionNodeType::Variable:
     {
         VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(node);
-        std::printf("varExpr: %s\n", varExpr->getName()->get_value().c_str());
-        return new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Pointer, 64),
-                               varExpr->getName()->get_value());
+        ir::Operand*            operand =
+            new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Pointer, 64),
+                            varExpr->getName()->get_value());
+        return operand;
     }
     break;
     default:
@@ -199,9 +200,10 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         }
         else
         {
-            storeSSA = new ir::Operand(ir::OperandKind::Register,
-                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-                                       std::any_cast<std::string>(destInstCount));
+            std::string destInstCountString = std::any_cast<std::string>(destInstCount);
+            storeSSA                        = new ir::Operand(ir::OperandKind::Register,
+                                                              new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                                              destInstCountString);
         }
         ir::Operand* storeValueOperand =
             builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
@@ -252,9 +254,10 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         }
         else
         {
-            storeSSA = new ir::Operand(ir::OperandKind::Register,
-                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-                                       std::any_cast<std::string>(destInstCount));
+            std::string destInstCountString = std::any_cast<std::string>(destInstCount);
+            storeSSA                        = new ir::Operand(ir::OperandKind::Register,
+                                                              new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                                              destInstCountString);
         }
         ir::Operand* storeValueOperand =
             builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
@@ -299,9 +302,10 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         }
         else
         {
-            storeSSA = new ir::Operand(ir::OperandKind::Register,
-                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-                                       std::any_cast<std::string>(destInstCount));
+            std::string destInstCountString = std::any_cast<std::string>(destInstCount);
+            storeSSA                        = new ir::Operand(ir::OperandKind::Register,
+                                                              new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                                              destInstCountString);
         }
         ir::Operand* storeValueOperand =
             builder->genOperand(reinterpret_cast<ExpressionNode*>(srcArg));
@@ -352,9 +356,10 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         }
         else
         {
-            loadSSA = new ir::Operand(ir::OperandKind::Register,
-                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-                                      std::any_cast<std::string>(destInstCount));
+            std::string destInstCountString = std::any_cast<std::string>(destInstCount);
+            loadSSA                         = new ir::Operand(ir::OperandKind::Register,
+                                                              new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
+                                                              destInstCountString);
         }
         std::string      result   = newResult();
         ir::Instruction* loadInst = new ir::Instruction(ir::Opcode::Load, {loadSSA}, result);
@@ -378,13 +383,14 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             {
                 RegisterExpressionNode* regExpr =
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
-                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+                destInstCount =
+                    std::string(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()));
             }
             else if (baseExpr->getExprType() == ExpressionNodeType::Variable)
             {
                 VariableExpressionNode* varExpr =
                     reinterpret_cast<VariableExpressionNode*>(baseExpr);
-                destInstCount = std::string("@" + varExpr->getName()->get_value()).c_str();
+                destInstCount = std::string("@" + varExpr->getName()->get_value());
             }
             else
             {
@@ -402,12 +408,6 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             loadSSA = new ir::Operand(ir::OperandKind::SSA,
                                       new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
                                       std::any_cast<size_t>(destInstCount));
-        }
-        else if (destInstCount.type() == typeid(const char*))
-        {
-            loadSSA = new ir::Operand(ir::OperandKind::Variable,
-                                      new ir::Type(ir::TypeKind::Integer, movInst->getInstSize()),
-                                      std::string(std::any_cast<const char*>(destInstCount)));
         }
         else
         {
@@ -486,6 +486,17 @@ static std::vector<ir::Instruction*> genXor(IrGen* builder, InstructionNode* xor
     }
     __builtin_unreachable();
 }
+static std::vector<const char*> nToArgMapping = {
+    "rdi", "rsi", "rdx", "rcx", "r8", "r9",
+};
+static const char* nToArg(size_t i)
+{
+    if (i < nToArgMapping.size())
+    {
+        return nToArgMapping.at(i);
+    }
+    return "stack";
+}
 static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* callNode)
 {
     (void)builder;
@@ -495,13 +506,19 @@ static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* ca
         std::printf("TODO: Call to non variable %lu\n", (size_t)destArg->getExprType());
         std::exit(1);
     }
-    VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(destArg);
-    std::string             result  = newResult();
-    ir::Instruction*        inst    = new ir::Instruction(
-        ir::Opcode::Call,
-        {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
-                                   varExpr->getName()->get_value())},
-        result);
+    VariableExpressionNode*   varExpr   = reinterpret_cast<VariableExpressionNode*>(destArg);
+    std::string               result    = newResult();
+    std::vector<ir::Operand*> operands  = {new ir::Operand(ir::OperandKind::Variable,
+                                                           new ir::Type(ir::TypeKind::Label, 64),
+                                                           "@" + varExpr->getName()->get_value())};
+    Symbol*                   calledSym = builder->getSymbolByName(varExpr->getName()->get_value());
+    for (size_t i = 0; i < calledSym->getArgumentsCount(); ++i)
+    {
+        RegisterExpressionNode* regExpr =
+            new RegisterExpressionNode(new Token(std::string(nToArg(i)), TokenType::IDENTIFIER));
+        operands.push_back(builder->genOperand(regExpr));
+    }
+    ir::Instruction* inst = new ir::Instruction(ir::Opcode::Call, operands, result);
     addAlias(getSSAValueFromReg("%rax"), result);
     return {inst};
 }
@@ -518,7 +535,7 @@ static std::vector<ir::Instruction*> genJmp(IrGen* builder, InstructionNode* cal
     ir::Instruction*        inst    = new ir::Instruction(
         ir::Opcode::Branch,
         {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
-                                   varExpr->getName()->get_value())});
+                                   "%" + varExpr->getName()->get_value())});
     return {inst};
 }
 static std::vector<ir::Instruction*> genRet(IrGen* builder, InstructionNode* retNode)
@@ -605,9 +622,10 @@ static void blockInsertTerminator(ir::Block* block, std::string nextBlockName)
 {
     if (!blockHasTerminator(block))
     {
-        ir::Type*        type    = new ir::Type(ir::TypeKind::Label, 64);
-        ir::Operand*     operand = new ir::Operand(ir::OperandKind::Variable, type, nextBlockName);
-        ir::Instruction* inst    = new ir::Instruction(ir::Opcode::Branch, {operand});
+        ir::Instruction* inst = new ir::Instruction(
+            ir::Opcode::Branch,
+            {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
+                             "%" + nextBlockName)});
         block->addInstruction(inst);
     }
 }
@@ -834,5 +852,9 @@ ir::Module* IrGen::genModule()
         _module->addSection(this->genSection(name, nodes));
     }
     return _module;
+}
+Symbol* IrGen::getSymbolByName(std::string name)
+{
+    return this->_symTable->getSymbolByName(name);
 }
 }; // namespace assembler::ir::gen

@@ -48,7 +48,7 @@ DiagManager::~DiagManager() {}
 void DiagManager::vlog(DiagLevel lvl, size_t offset, const char* fmt, va_list args)
 {
     std::string diagLvl = diagLvLToColorWithName(lvl);
-    char*       buffer  = new char[8192];
+    char*       buffer  = new char[8192]();
     std::vsnprintf(buffer, 8192, fmt, args);
     std::printf("%lu:%s%s%s", offset, diagLvl.c_str(), COLOR_RESET.c_str(), buffer);
     delete[] buffer;

@@ -71,7 +71,7 @@ class clopts_opt_t
         std::fseek(f, 0, SEEK_END);
         size_t length = std::ftell(f);
         std::fseek(f, 0, SEEK_SET);
-        char* buffer = new char[length];
+        char* buffer = new char[length]();
         std::fread(buffer, 1, length, f);
         std::fclose(f);
         return std::string(buffer, length);

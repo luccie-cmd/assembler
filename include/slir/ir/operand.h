@@ -22,11 +22,8 @@ class Operand
     OperandKind getOperandKind();
     void print();
   private:
-    union
-    {
-        std::string reg;
-        uint64_t imm;
-    };
+    std::string reg;
+    uint64_t imm;
     OperandKind kind;
     Type*       type;
 };

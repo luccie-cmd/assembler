@@ -19,7 +19,7 @@ Function::Function(std::string _name, size_t _arguments, FunctionBinding bind)
     }
 }
 Function::~Function() {}
-std::vector<const char*> nToArgMapping = {
+static std::vector<const char*> nToArgMapping = {
     "rdi", "rsi", "rdx", "rcx", "r8", "r9",
 };
 static const char* nToArg(size_t i)
@@ -36,7 +36,31 @@ void Function::print(size_t spacing)
     {
         std::putchar(' ');
     }
-    std::printf("%lu function @%s(", (size_t)this->funcBind, this->name.c_str());
+    switch (this->funcBind)
+    {
+    case FunctionBinding::DeclareExternal:
+    {
+        std::printf("declare external");
+    }
+    break;
+    case FunctionBinding::DeclareInternal:
+    {
+        std::printf("declare internal");
+    }
+    break;
+    case FunctionBinding::Define:
+    {
+        std::printf("define");
+    }
+    break;
+    default:
+    {
+        std::printf("Invalid function binding %lu\n", (size_t)this->funcBind);
+        std::exit(1);
+    }
+    break;
+    }
+    std::printf(" function @%s(", this->name.c_str());
     for (size_t i = 0; i < this->arguments; ++i)
     {
         std::printf("i64 %%%s", nToArg(i));

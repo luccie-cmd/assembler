@@ -15,10 +15,7 @@ struct Type
 {
     Type(TypeKind kind, uint8_t bitSize);
     ~Type();
-    union
-    {
-        uint8_t bitSize;
-    };
+    uint8_t  bitSize;
     TypeKind kind;
 };
 } // namespace assembler::ir::ir

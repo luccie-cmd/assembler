@@ -6,7 +6,7 @@ Operand::Operand(OperandKind _kind, Type* _type, std::string _reg)
 {
     this->kind = _kind;
     this->type = _type;
-    this->reg  = _reg.c_str();
+    this->reg  = std::move(_reg);
 }
 Operand::Operand(OperandKind _kind, Type* _type, uint64_t _imm)
 {
@@ -51,7 +51,7 @@ void Operand::print()
     }
     else if (this->kind == OperandKind::Variable)
     {
-        std::printf("@%s", this->reg.c_str());
+        std::printf("%s", this->reg.c_str());
     }
     else
     {

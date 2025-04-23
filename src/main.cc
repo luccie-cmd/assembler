@@ -3,6 +3,7 @@
 #include <driver/context.h>
 #include <driver/diag.h>
 #include <filesystem>
+#include <slir/ir/operand.h>
 #include <string>
 
 using namespace command_line_opts;

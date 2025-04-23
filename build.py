@@ -84,9 +84,9 @@ if OLD_CONFIG != CONFIG:
     print("Configuration changed, rebuilding...")
 CONFIG["CFLAGS"] = ['-c', '-DCOMPILE', '-fno-omit-frame-pointer', '-ggdb', '-funsafe-math-optimizations -ffast-math']
 CONFIG["CFLAGS"] += ["-O0", '-DNDEBUG']
-CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wshadow']
+CONFIG["CFLAGS"] += ['-Werror', '-Wall', '-Wextra', '-Wpointer-arith', '-Wshadow', '-Wuninitialized']
 CONFIG["CXXFLAGS"] = ['-fno-exceptions']
-CONFIG["ASFLAGS"] = ['-felf64']
+CONFIG["ASFLAGS"] = ['-c']
 CONFIG["LDFLAGS"] = ['-Wl,--gc-sections', '-Wl,--build-id=none', '-O0', '-march=native', '-mtune=native']
 CONFIG["INCPATHS"] = ['-Iinclude']
 
@@ -366,7 +366,7 @@ def buildCXX(file):
         return code
 
 def buildASM(file):
-    compiler = "nasm"
+    compiler = "gcc"
     options = CONFIG["ASFLAGS"].copy()
     command = compiler + " " + file
     for option in options:
@@ -396,7 +396,7 @@ def buildNormal(kernel_dir: str) -> bool:
     for file in files:
         if not os.path.isfile(file):
             continue
-        if not checkExtension(file, ["c", "cc", "asm"]):
+        if not checkExtension(file, ["c", "cc", "S"]):
             continue
         if getExtension(file) == "inc" or getExtension(file) == "h":
             continue
@@ -419,7 +419,7 @@ def buildNormal(kernel_dir: str) -> bool:
         CONFIG["ASFLAGS"] += CONFIG["INCPATHS"]
         if getExtension(file) == "c":
             code = buildC(file)
-        elif getExtension(file) == "asm":
+        elif getExtension(file) == "S":
             code = buildASM(file)
         elif getExtension(file) == "cc":
             code = buildCXX(file)
