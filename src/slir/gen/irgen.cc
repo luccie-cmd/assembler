@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <any>
+#include <cmath>
 #include <deque>
 #include <functional>
 #include <slir/gen/irgen.h>
@@ -154,6 +155,16 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         operands.push_back(builder->genOperand(srcArg));
         opcode                          = ir::Opcode::Const;
         std::string             result  = newResult();
+        RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        return {new ir::Instruction(opcode, operands, result)};
+    }
+    else if (srcArg->getExprType() == ExpressionNodeType::Register &&
+             destArg->getExprType() == ExpressionNodeType::Register)
+    {
+        std::string result = newResult();
+        opcode             = ir::Opcode::Copy;
+        operands.push_back(builder->genOperand(srcArg));
         RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
         addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
         return {new ir::Instruction(opcode, operands, result)};
@@ -548,43 +559,87 @@ static std::vector<ir::Instruction*> genRet(IrGen* builder, InstructionNode* ret
                          std::stoul(getSSAValueFromReg("%rax").substr(1)))});
     return {inst};
 }
-static std::vector<ir::Instruction*> genPush(IrGen* builder, InstructionNode* pushNode)
-{
-    (void)builder;
-    if (pushNode->getInstSize() != 64)
-    {
-        std::printf("TODO: Generate non 64 bit pushes\n");
-        std::exit(1);
-    }
-    std::printf("TODO: Generate 64 bit push\n");
-    return {};
-}
-static std::vector<ir::Instruction*> genPop(IrGen* builder, InstructionNode* popNode)
-{
-    (void)builder;
-    if (popNode->getInstSize() != 64)
-    {
-        std::printf("TODO: Generate non 64 bit pops\n");
-        std::exit(1);
-    }
-    std::printf("TODO: Generate 64 bit pop\n");
-    return {};
-}
 static std::vector<ir::Instruction*> genAdd(IrGen* builder, InstructionNode* addNode)
 {
-    (void)builder;
     if (addNode->getInstSize() != 64)
     {
         std::printf("TODO: Generate non 64 bit adds\n");
         std::exit(1);
     }
-    std::printf("TODO: Generate 64 bit add\n");
-    return {};
+    std::vector<ir::Instruction*> retInsts = {};
+    ExpressionNode* destNode = reinterpret_cast<ExpressionNode*>(addNode->getArgs().at(0));
+    ExpressionNode* srcNode  = reinterpret_cast<ExpressionNode*>(addNode->getArgs().at(1));
+    if (destNode->getExprType() == ExpressionNodeType::Memory)
+    {
+        std::printf("TODO: Generate memory destination adds\n");
+        std::exit(1);
+    }
+    else if (destNode->getExprType() == ExpressionNodeType::Memory)
+    {
+        std::printf("TODO: Generate memory source adds\n");
+        std::exit(1);
+    }
+    else if (destNode->getExprType() != ExpressionNodeType::Memory &&
+             srcNode->getExprType() != ExpressionNodeType::Memory)
+    {
+        std::string             result      = newResult();
+        ir::Operand*            srcOperand  = builder->genOperand(srcNode);
+        RegisterExpressionNode* regExpr     = reinterpret_cast<RegisterExpressionNode*>(destNode);
+        ir::Operand*            destOperand = builder->genOperand(destNode);
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()).c_str(),
+                 result.c_str());
+        retInsts.push_back(new ir::Instruction(ir::Opcode::Add, {destOperand, srcOperand}, result));
+    }
+    else
+    {
+        __builtin_unreachable();
+    }
+    return retInsts;
 }
+static std::vector<ir::Instruction*> genShl(IrGen* builder, InstructionNode* addNode)
+{
+    std::vector<ir::Instruction*> retInsts = {};
+    ExpressionNode* destNode = reinterpret_cast<ExpressionNode*>(addNode->getArgs().at(0));
+    ExpressionNode* srcNode  = reinterpret_cast<ExpressionNode*>(addNode->getArgs().at(1));
+    if (destNode->getExprType() == ExpressionNodeType::Memory)
+    {
+        std::printf("TODO: Generate memory destination shift lefts\n");
+        std::exit(1);
+    }
+    else if (destNode->getExprType() == ExpressionNodeType::Memory)
+    {
+        std::printf("TODO: Generate memory source shift lefts\n");
+        std::exit(1);
+    }
+    else if (destNode->getExprType() == ExpressionNodeType::Register &&
+             srcNode->getExprType() == ExpressionNodeType::Immediate)
+    {
+        std::string              result  = newResult();
+        ImmediateExpressionNode* srcImm  = reinterpret_cast<ImmediateExpressionNode*>(srcNode);
+        ImmediateExpressionNode* immExpr = new ImmediateExpressionNode(
+            new Token(std::to_string(std::powl(2.0, std::stof(srcImm->getValue()->get_value()))),
+                      TokenType::LIT_NUMBER));
+        ir::Operand*            srcOperand  = builder->genOperand(immExpr);
+        RegisterExpressionNode* regExpr     = reinterpret_cast<RegisterExpressionNode*>(destNode);
+        ir::Operand*            destOperand = builder->genOperand(destNode);
+        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()).c_str(),
+                 result.c_str());
+        retInsts.push_back(
+            new ir::Instruction(ir::Opcode::Imul, {destOperand, srcOperand}, result));
+    }
+    else
+    {
+        std::printf("TODO: Generate %lu source %lu destination shift lefts\n",
+                    (size_t)srcNode->getExprType(), (size_t)destNode->getExprType());
+        std::exit(1);
+    }
+    return retInsts;
+}
+static std::vector<std::string> unIROpcodes = {"push", "pop"};
 using GenFunc = std::function<std::vector<ir::Instruction*>(IrGen*, InstructionNode*)>;
 static std::unordered_map<std::string, GenFunc> generatorMap = {
-    {"mov", genMov}, {"xor", genXor},   {"call", genCall}, {"jmp", genJmp},
-    {"ret", genRet}, {"push", genPush}, {"pop", genPop},   {"add", genAdd}};
+    {"mov", genMov}, {"xor", genXor}, {"call", genCall}, {"jmp", genJmp},
+    {"ret", genRet}, {"add", genAdd}, {"shl", genShl}};
 std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
 {
     if (node->getAstNodeType() != AstNodeType::Instruction)
@@ -594,7 +649,12 @@ std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
                              node->getAstNodeType());
     }
     InstructionNode* instNode = reinterpret_cast<InstructionNode*>(node);
-    auto             it       = generatorMap.find(instNode->getMnemonic()->get_value());
+    if (std::find(unIROpcodes.begin(), unIROpcodes.end(), instNode->getMnemonic()->get_value()) !=
+        unIROpcodes.end())
+    {
+        return {};
+    }
+    auto it = generatorMap.find(instNode->getMnemonic()->get_value());
     if (it != generatorMap.end())
     {
         return it->second(this, instNode);

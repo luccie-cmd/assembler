@@ -5,7 +5,8 @@ namespace assembler::ir::ir
 static std::vector<std::pair<Opcode, std::string>> opcodeToStringPairs = {
     {Opcode::Add, "add"},     {Opcode::Imul, "imul"},   {Opcode::Load, "load"},
     {Opcode::Const, "const"}, {Opcode::Store, "store"}, {Opcode::Branch, "br"},
-    {Opcode::Call, "call"},   {Opcode::Ret, "ret"}};
+    {Opcode::Call, "call"},   {Opcode::Ret, "ret"},     {Opcode::Copy, "copy"},
+    {Opcode::None, "none"}};
 
 static std::string convertOpcodeToString(Opcode opcode)
 {
