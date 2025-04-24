@@ -1,4 +1,5 @@
 #include <slir/ir/function.h>
+#include <unordered_map>
 
 namespace assembler::ir::ir
 {
@@ -86,8 +87,51 @@ void Function::print(size_t spacing)
     }
     std::printf("}\n");
 }
+std::string Function::getName()
+{
+    return this->name;
+}
+std::unordered_map<std::string, Block*> lazyCreationList;
+
 void Function::addBlock(Block* block)
 {
-    this->blocks.push_back(block);
+    Block* blk = block;
+    if (lazyCreationList.contains(block->getName()))
+    {
+        blk = lazyCreationList.at(block->getName());
+        for (Instruction* inst : block->getInstructions())
+        {
+            blk->addInstruction(inst);
+        }
+        for (std::string succ : block->getSuccessors())
+        {
+            blk->addSuccessors(succ);
+        }
+        for (std::string pred : block->getPredecessors())
+        {
+            blk->addPredecessors(pred);
+        }
+        lazyCreationList.erase(name);
+    }
+    this->blocks.push_back(blk);
+}
+Block* Function::getBlockByName(std::string blockName)
+{
+    for (Block* blk : this->blocks)
+    {
+        if (blk->getName() == blockName)
+        {
+            return blk;
+        }
+    }
+    if (!lazyCreationList.contains(blockName))
+    {
+        lazyCreationList[blockName] = new Block(blockName); // dummy
+    }
+    return lazyCreationList[blockName];
+}
+std::vector<Block*> Function::getBlocks()
+{
+    return this->blocks;
 }
 }; // namespace assembler::ir::ir

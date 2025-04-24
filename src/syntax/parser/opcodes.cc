@@ -52,6 +52,14 @@ uint8_t getRegisterSize(std::string reg)
     {
         return 32;
     }
+    if (reg.ends_with('l') || reg.ends_with('h'))
+    {
+        return 8;
+    }
+    if (reg.ends_with('x'))
+    {
+        return 16;
+    }
     std::printf("ICE: Invalid register `%s` brought to getRegisterSize. Sema do better.",
                 reg.c_str());
     std::exit(1);

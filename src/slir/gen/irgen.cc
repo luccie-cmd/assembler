@@ -3,6 +3,7 @@
 #include <cmath>
 #include <deque>
 #include <functional>
+#include <set>
 #include <slir/gen/irgen.h>
 #include <syntax/ast/decl.h>
 #include <syntax/ast/inst.h>
@@ -21,9 +22,14 @@ IrGen::IrGen(DiagManager* diagMngr, Ast* ast, SymbolTable* symTable)
     this->_ast      = ast;
     this->_symTable = symTable;
 }
+static std::vector<ir::Opcode> resultingOpcodes = {
+    ir::Opcode::Const,  ir::Opcode::Copy,   ir::Opcode::Load,   ir::Opcode::Xor,
+    ir::Opcode::Add,    ir::Opcode::Sub,    ir::Opcode::Imul,   ir::Opcode::Call,
+    ir::Opcode::Select, ir::Opcode::IcmpEQ, ir::Opcode::IcmpLE, ir::Opcode::Phi,
+};
 static size_t                                           instructionCount = 0;
 static std::vector<std::pair<std::string, std::string>> aliasses;
-static std::string                                      getSSAValueFromReg(std::string reg)
+static std::string getSSAValueFromReg(std::string reg, bool stopAtFound = false)
 {
     std::string name = reg;
     for (std::pair<std::string, std::string> oldNewAlias : aliasses)
@@ -31,6 +37,10 @@ static std::string                                      getSSAValueFromReg(std::
         if (oldNewAlias.first == name)
         {
             name = oldNewAlias.second;
+            if (stopAtFound)
+            {
+                break;
+            }
         }
     }
     return name;
@@ -50,7 +60,15 @@ ir::Operand* IrGen::genOperand(ExpressionNode* node)
     case ExpressionNodeType::Register:
     {
         RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(node);
-        std::string ssaValue = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+        std::string             ssaValue;
+        if (regExpr->getRegister()->get_value().starts_with('e'))
+        {
+            ssaValue = getSSAValueFromReg("%r" + regExpr->getRegister()->get_value().substr(1));
+        }
+        else
+        {
+            ssaValue = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+        }
         return new ir::Operand(
             ir::OperandKind::Register,
             new ir::Type(ir::TypeKind::Integer,
@@ -68,9 +86,20 @@ ir::Operand* IrGen::genOperand(ExpressionNode* node)
     case ExpressionNodeType::Variable:
     {
         VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(node);
-        ir::Operand*            operand =
-            new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Pointer, 64),
-                            varExpr->getName()->get_value());
+        ir::TypeKind            kind;
+        std::string             name;
+        if (varExpr->getName()->get_value().starts_with(this->_currentFunc->getName()))
+        {
+            kind = ir::TypeKind::Label;
+            name = "%" + varExpr->getName()->get_value();
+        }
+        else
+        {
+            kind = ir::TypeKind::Pointer;
+            name = varExpr->getName()->get_value();
+        }
+        ir::Operand* operand =
+            new ir::Operand(ir::OperandKind::Variable, new ir::Type(kind, 64), name);
         return operand;
     }
     break;
@@ -497,68 +526,6 @@ static std::vector<ir::Instruction*> genXor(IrGen* builder, InstructionNode* xor
     }
     __builtin_unreachable();
 }
-static std::vector<const char*> nToArgMapping = {
-    "rdi", "rsi", "rdx", "rcx", "r8", "r9",
-};
-static const char* nToArg(size_t i)
-{
-    if (i < nToArgMapping.size())
-    {
-        return nToArgMapping.at(i);
-    }
-    return "stack";
-}
-static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* callNode)
-{
-    (void)builder;
-    ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
-    if (destArg->getExprType() != ExpressionNodeType::Variable)
-    {
-        std::printf("TODO: Call to non variable %lu\n", (size_t)destArg->getExprType());
-        std::exit(1);
-    }
-    VariableExpressionNode*   varExpr   = reinterpret_cast<VariableExpressionNode*>(destArg);
-    std::string               result    = newResult();
-    std::vector<ir::Operand*> operands  = {new ir::Operand(ir::OperandKind::Variable,
-                                                           new ir::Type(ir::TypeKind::Label, 64),
-                                                           "@" + varExpr->getName()->get_value())};
-    Symbol*                   calledSym = builder->getSymbolByName(varExpr->getName()->get_value());
-    for (size_t i = 0; i < calledSym->getArgumentsCount(); ++i)
-    {
-        RegisterExpressionNode* regExpr =
-            new RegisterExpressionNode(new Token(std::string(nToArg(i)), TokenType::IDENTIFIER));
-        operands.push_back(builder->genOperand(regExpr));
-    }
-    ir::Instruction* inst = new ir::Instruction(ir::Opcode::Call, operands, result);
-    addAlias(getSSAValueFromReg("%rax"), result);
-    return {inst};
-}
-static std::vector<ir::Instruction*> genJmp(IrGen* builder, InstructionNode* callNode)
-{
-    (void)builder;
-    ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
-    if (destArg->getExprType() != ExpressionNodeType::Variable)
-    {
-        std::printf("TODO: Jump to non variable %lu\n", (size_t)destArg->getExprType());
-        std::exit(1);
-    }
-    VariableExpressionNode* varExpr = reinterpret_cast<VariableExpressionNode*>(destArg);
-    ir::Instruction*        inst    = new ir::Instruction(
-        ir::Opcode::Branch,
-        {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
-                                   "%" + varExpr->getName()->get_value())});
-    return {inst};
-}
-static std::vector<ir::Instruction*> genRet(IrGen* builder, InstructionNode* retNode)
-{
-    (void)builder;
-    (void)retNode;
-    ir::Instruction* inst = new ir::Instruction(
-        ir::Opcode::Ret,
-        {new ir::Operand(ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, 64),
-                         std::stoul(getSSAValueFromReg("%rax").substr(1)))});
-    return {inst};
-}
 static std::vector<ir::Instruction*> genAdd(IrGen* builder, InstructionNode* addNode)
 {
     if (addNode->getInstSize() != 64)
@@ -635,11 +602,134 @@ static std::vector<ir::Instruction*> genShl(IrGen* builder, InstructionNode* add
     }
     return retInsts;
 }
+static std::vector<const char*> nToArgMapping = {
+    "rdi", "rsi", "rdx", "rcx", "r8", "r9",
+};
+static const char* nToArg(size_t i)
+{
+    if (i < nToArgMapping.size())
+    {
+        return nToArgMapping.at(i);
+    }
+    return "stack";
+}
+static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* callNode)
+{
+    (void)builder;
+    ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
+    if (destArg->getExprType() != ExpressionNodeType::Variable)
+    {
+        std::printf("TODO: Call to non variable %lu\n", (size_t)destArg->getExprType());
+        std::exit(1);
+    }
+    VariableExpressionNode*   varExpr   = reinterpret_cast<VariableExpressionNode*>(destArg);
+    std::string               result    = newResult();
+    std::vector<ir::Operand*> operands  = {new ir::Operand(ir::OperandKind::Variable,
+                                                           new ir::Type(ir::TypeKind::Label, 64),
+                                                           "@" + varExpr->getName()->get_value())};
+    Symbol*                   calledSym = builder->getSymbolByName(varExpr->getName()->get_value());
+    for (size_t i = 0; i < calledSym->getArgumentsCount(); ++i)
+    {
+        RegisterExpressionNode* regExpr =
+            new RegisterExpressionNode(new Token(std::string(nToArg(i)), TokenType::IDENTIFIER));
+        operands.push_back(builder->genOperand(regExpr));
+    }
+    ir::Instruction* inst = new ir::Instruction(ir::Opcode::Call, operands, result);
+    addAlias(getSSAValueFromReg("%rax"), result);
+    return {inst};
+}
+static std::vector<ir::Instruction*> genJmp(IrGen* builder, InstructionNode* callNode)
+{
+    (void)builder;
+    ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
+    if (destArg->getExprType() != ExpressionNodeType::Variable)
+    {
+        std::printf("TODO: Jump to non variable %lu\n", (size_t)destArg->getExprType());
+        std::exit(1);
+    }
+    VariableExpressionNode* varExpr          = reinterpret_cast<VariableExpressionNode*>(destArg);
+    std::string             currentBlockName = builder->getCurrentBlock()->getName();
+    std::string             targetBlockName  = varExpr->getName()->get_value();
+    ir::Instruction*        inst             = new ir::Instruction(
+        ir::Opcode::Branch,
+        {new ir::Operand(ir::OperandKind::Variable, new ir::Type(ir::TypeKind::Label, 64),
+                                            "%" + varExpr->getName()->get_value())});
+    return {inst};
+}
+static std::vector<ir::Instruction*> genRet(IrGen* builder, InstructionNode* retNode)
+{
+    (void)retNode;
+    ir::Instruction* inst =
+        new ir::Instruction(ir::Opcode::Ret, {builder->genOperand(new VariableExpressionNode(
+                                                 new Token("%TODO", TokenType::IDENTIFIER)))});
+    return {inst};
+}
+static ir::Operand*                  leftCmp  = nullptr;
+static ir::Operand*                  rightCmp = nullptr;
+static std::string                   resultingCmp;
+static std::vector<ir::Instruction*> genCmp(IrGen* builder, InstructionNode* cmpNode)
+{
+    leftCmp  = builder->genOperand(reinterpret_cast<ExpressionNode*>(cmpNode->getArgs().at(0)));
+    rightCmp = builder->genOperand(reinterpret_cast<ExpressionNode*>(cmpNode->getArgs().at(1)));
+    return {};
+}
+static std::vector<ir::Instruction*> genConditional(ir::Opcode condOpcode)
+{
+    if (leftCmp == nullptr || rightCmp == nullptr)
+    {
+        std::printf("ERROR: Attempted a conditional move that relies on unset conditionals\n");
+        std::exit(1);
+    }
+    resultingCmp = newResult();
+    return {new ir::Instruction(condOpcode, {leftCmp, rightCmp}, resultingCmp)};
+}
+static std::vector<ir::Instruction*> genCmove(IrGen* builder, InstructionNode* cmoveNode)
+{
+    ExpressionNode* destExpr = reinterpret_cast<ExpressionNode*>(cmoveNode->getArgs().at(0));
+    ExpressionNode* srcExpr  = reinterpret_cast<ExpressionNode*>(cmoveNode->getArgs().at(1));
+    if (destExpr->getExprType() != ExpressionNodeType::Register ||
+        srcExpr->getExprType() != ExpressionNodeType::Register)
+    {
+        std::printf("ERROR: Invalid cmove operands. Expected 2 registers\n");
+        std::exit(1);
+    }
+    std::vector<ir::Instruction*> retInsts = genConditional(ir::Opcode::IcmpEQ);
+    std::string                   result   = newResult();
+    ir::Instruction*              selectInst =
+        new ir::Instruction(ir::Opcode::Select,
+                            {builder->genCmpOperand(resultingCmp), builder->genOperand(srcExpr),
+                             builder->genOperand(destExpr)},
+                            result);
+    RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destExpr);
+    addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()).c_str(), result.c_str());
+    retInsts.push_back(selectInst);
+    return retInsts;
+}
+static std::vector<ir::Instruction*> genJe(IrGen* builder, InstructionNode* jeNode)
+{
+    ExpressionNode* destExpr = reinterpret_cast<ExpressionNode*>(jeNode->getArgs().at(0));
+    if (destExpr->getExprType() != ExpressionNodeType::Variable)
+    {
+        std::printf("ERROR: Invalid je operands. Expected label\n");
+        std::exit(1);
+    }
+    std::vector<ir::Instruction*> retInsts          = genConditional(ir::Opcode::IcmpEQ);
+    static int                    falseLabelCounter = 0;
+    std::string falseLabel = builder->getCurrentFunction()->getName() + ".__false_temp" +
+                             std::to_string(falseLabelCounter++);
+    ir::Instruction* brInst = new ir::Instruction(
+        ir::Opcode::Branch, {builder->genCmpOperand(resultingCmp), builder->genOperand(destExpr),
+                             builder->genOperand(new VariableExpressionNode(
+                                 new Token(falseLabel, TokenType::IDENTIFIER)))});
+    retInsts.push_back(brInst);
+    builder->setTempBlockName(falseLabel);
+    return retInsts;
+}
 static std::vector<std::string> unIROpcodes = {"push", "pop"};
 using GenFunc = std::function<std::vector<ir::Instruction*>(IrGen*, InstructionNode*)>;
 static std::unordered_map<std::string, GenFunc> generatorMap = {
-    {"mov", genMov}, {"xor", genXor}, {"call", genCall}, {"jmp", genJmp},
-    {"ret", genRet}, {"add", genAdd}, {"shl", genShl}};
+    {"mov", genMov}, {"xor", genXor}, {"call", genCall}, {"jmp", genJmp},     {"ret", genRet},
+    {"add", genAdd}, {"shl", genShl}, {"cmp", genCmp},   {"cmove", genCmove}, {"je", genJe}};
 std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
 {
     if (node->getAstNodeType() != AstNodeType::Instruction)
@@ -663,6 +753,11 @@ std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
                          instNode->getMnemonic()->get_value().c_str());
     __builtin_unreachable();
 }
+ir::Operand* IrGen::genCmpOperand(std::string ssaNode)
+{
+    return new ir::Operand(ir::OperandKind::SSA, new ir::Type(ir::TypeKind::Integer, 1),
+                           std::stoul(ssaNode.substr(1)));
+}
 static std::vector<ir::Opcode> terminators = {ir::Opcode::Branch, ir::Opcode::Ret};
 static bool                    blockHasTerminator(ir::Block* block)
 {
@@ -670,6 +765,14 @@ static bool                    blockHasTerminator(ir::Block* block)
     for (ir::Instruction* inst : block->getInstructions())
     {
         last = inst;
+        if (std::find(terminators.begin(), terminators.end(), last->getOpcode()) !=
+                terminators.end() &&
+            last != block->getInstructions().back())
+        {
+            std::printf("ICE: A branch (jmp, je, jne, jl, jle, jg, jge) or ret was placed in the "
+                        "middle of a block\n");
+            std::exit(1);
+        }
     }
     if (last == nullptr)
     {
@@ -691,7 +794,9 @@ static void blockInsertTerminator(ir::Block* block, std::string nextBlockName)
 }
 ir::Block* IrGen::genBlock(std::string name, std::vector<AstNode*> nodes)
 {
-    ir::Block* block = new ir::Block(name);
+    aliasses.clear();
+    ir::Block* block    = new ir::Block(name);
+    this->_currentBlock = block;
     for (AstNode* node : nodes)
     {
         std::vector<ir::Instruction*> insts = this->genInstructions(node);
@@ -700,11 +805,11 @@ ir::Block* IrGen::genBlock(std::string name, std::vector<AstNode*> nodes)
             block->addInstruction(inst);
         }
     }
+    block->addAliasses(aliasses);
     return block;
 }
 ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
 {
-    aliasses.clear();
     instructionCount = 0;
     OrderedMap<std::string, std::vector<AstNode*>> blocks;
     std::string                                    currentBlock = name;
@@ -744,6 +849,7 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
         __builtin_unreachable();
     }
     ir::Function* func = new ir::Function(name, sym->getArgumentsCount(), funcBind);
+    this->_currentFunc = func;
     if (symBind != SymbolBinding::Extern)
     {
         for (size_t i = 0; i < blocks.size(); ++i)
@@ -758,11 +864,133 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                     "Expected a terminator instruction as last instruction of label `%s`\n",
                     sym->getName().c_str());
             }
-            if (blocks.size() - 1 != i)
+            if (!this->_tempBlockName.empty())
             {
-                blockInsertTerminator(block, blocks.at(i + 1).first);
+                ir::Block* newBlock  = new ir::Block(this->_tempBlockName);
+                ir::Block* predBlock = new ir::Block(_name);
+                this->_tempBlockName.clear();
+                bool             brFound             = false;
+                size_t           instCountAtNewBlock = 0;
+                ir::Instruction* lastResultInst      = nullptr;
+                for (ir::Instruction* inst : block->getInstructions())
+                {
+                    if (brFound)
+                    {
+                        newBlock->addInstruction(inst);
+                    }
+                    else
+                    {
+                        predBlock->addInstruction(inst);
+                    }
+                    if (inst->getOpcode() == ir::Opcode::Branch && !brFound)
+                    {
+                        if (lastResultInst)
+                        {
+                            instCountAtNewBlock = std::stoul(lastResultInst->getResult().substr(1));
+                        }
+                        else
+                        {
+                            instCountAtNewBlock = 0;
+                        }
+                        brFound = true;
+                    }
+                    if (std::find(resultingOpcodes.begin(), resultingOpcodes.end(),
+                                  inst->getOpcode()) != resultingOpcodes.end())
+                    {
+                        lastResultInst = inst;
+                    }
+                }
+                std::vector<std::pair<std::string, std::string>> predAliasses;
+                std::vector<std::pair<std::string, std::string>> newAliasses;
+                for (size_t j = 0; j < block->getAliasses().size(); ++j)
+                {
+                    if (j >= instCountAtNewBlock)
+                    {
+                        newAliasses.push_back(block->getAliasses().at(j));
+                    }
+                    else
+                    {
+                        predAliasses.push_back(block->getAliasses().at(j));
+                    }
+                }
+                predBlock->addAliasses(predAliasses);
+                newBlock->addAliasses(newAliasses);
+                if (blocks.size() - 1 != i)
+                {
+                    blockInsertTerminator(newBlock, blocks.at(i + 1).first);
+                }
+                if (!blockHasTerminator(predBlock))
+                {
+                    std::printf("ICE: predBlock doesn't have a terminator\n");
+                    std::exit(1);
+                }
+
+                func->addBlock(predBlock);
+                func->addBlock(newBlock);
             }
-            func->addBlock(block);
+            else
+            {
+                if (blocks.size() - 1 != i)
+                {
+                    blockInsertTerminator(block, blocks.at(i + 1).first);
+                }
+                func->addBlock(block);
+            }
+        }
+        // Connect nodes
+        for (ir::Block* block : func->getBlocks())
+        {
+            ir::Instruction* last = block->getInstructions().back();
+            if (last->getOpcode() == ir::Opcode::Branch)
+            {
+                std::vector<std::string> successors;
+                if (last->getOperands().size() == 3)
+                {
+                    successors.push_back(last->getOperands().at(1)->getName());
+                    successors.push_back(last->getOperands().at(2)->getName());
+                }
+                else
+                {
+                    successors.push_back(last->getOperands().at(0)->getName());
+                }
+                for (std::string succ : successors)
+                {
+                    block->addSuccessors(succ);
+                    func->getBlockByName(succ.substr(1))->addPredecessors(block->getName());
+                }
+            }
+            if (block == func->getBlocks().back())
+            {
+                if (block->getInstructions().back()->getOpcode() != ir::Opcode::Ret)
+                {
+                    this->_diagMngr->log(
+                        DiagLevel::ERROR, 0,
+                        "Expected last instruction of function `%s` to be a `ret`\n", name.c_str());
+                }
+                std::vector<std::pair<std::string, std::string>> phiInputs;
+                std::set<std::string>                            seen;
+                for (std::string pred : block->getPredecessors())
+                {
+                    aliasses             = func->getBlockByName(pred)->getAliasses();
+                    std::string ssaValue = getSSAValueFromReg("%rax", false);
+                    if (seen.insert(ssaValue).second)
+                    {
+                        phiInputs.emplace_back(ssaValue, pred);
+                    }
+                }
+                aliasses = block->getAliasses();
+                if (phiInputs.size() > 1)
+                {
+                    std::string newSSA = newResult();
+                    aliasses.push_back({"%rax", newSSA});
+                    block->removeLastInst();
+                    block->addInstruction(
+                        new ir::Instruction(ir::Opcode::Phi, phiInputs, newSSA, true));
+                }
+                block->addInstruction(new ir::Instruction(
+                    ir::Opcode::Ret, {this->genOperand(new RegisterExpressionNode(
+                                         new Token("rax", TokenType::IDENTIFIER)))}));
+            }
         }
     }
     return func;
@@ -917,4 +1145,39 @@ Symbol* IrGen::getSymbolByName(std::string name)
 {
     return this->_symTable->getSymbolByName(name);
 }
+ir::Block* IrGen::getCurrentBlock()
+{
+    return this->_currentBlock;
+}
+ir::Function* IrGen::getCurrentFunction()
+{
+    return this->_currentFunc;
+}
+void IrGen::setTempBlockName(std::string name)
+{
+    this->_tempBlockName = name;
+}
 }; // namespace assembler::ir::gen
+
+// void generatePhiForFunction(Function& func, BasicBlock* block) {
+//     // Collect SSA values for phi node from predecessors
+//     std::vector<std::pair<std::string, std::string>> phiInputs;
+//     std::set<std::string> seen;  // To ensure uniqueness
+
+//     // Loop over predecessors
+//     for (const auto& pred : block->predecessors) {
+//         // Get SSA value for each predecessor, respecting aliasing
+//         std::string ssaValue = getSSAValueFromFunction(func, "%rax");  // Example for %rax
+//         if (seen.insert(ssaValue).second) {
+//             // Add the SSA value and predecessor block label
+//             phiInputs.emplace_back(ssaValue, pred);
+//         }
+//     }
+
+//     // If we have multiple predecessors, we need a phi node
+//     if (phiInputs.size() > 1) {
+//         std::string newSSA = newResult();  // Generate new SSA name for phi node
+//         func.aliases.push_back({"%rax", newSSA});  // Store alias for %rax
+//         addInstruction(block->label, new ir::Instruction(ir::Opcode::Phi, phiInputs, newSSA));
+//     }
+// }

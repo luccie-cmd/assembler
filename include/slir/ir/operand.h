@@ -21,6 +21,8 @@ class Operand
     Operand(OperandKind kind, Type* type, uint64_t imm);
     OperandKind getOperandKind();
     void print();
+    Type* getType();
+    std::string getName();
   private:
     std::string reg;
     uint64_t imm;

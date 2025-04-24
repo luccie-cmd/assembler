@@ -3,6 +3,7 @@ type main, function
 arguments main, 0
 section .text
 main:
+    xor rax, rax
     cmp rax, 5
     je .label1
     mov rbx, 0

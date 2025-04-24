@@ -59,4 +59,17 @@ void Operand::print()
         std::exit(1);
     }
 }
+Type* Operand::getType()
+{
+    return this->type;
+}
+std::string Operand::getName()
+{
+    if (this->reg.empty())
+    {
+        std::printf("ICE: Invalid call to Operand::getName(). Reg is empty\n");
+        std::exit(1);
+    }
+    return this->reg;
+}
 }; // namespace assembler::ir::ir

@@ -14,10 +14,14 @@ class IrGen
   public:
     IrGen(DiagManager* diagMngr, Ast* ast, SymbolTable* symTable);
     ~IrGen();
-    ir::Module*  genModule();
-    ir::Operand* genOperand(ExpressionNode* node);
+    ir::Module*                   genModule();
+    ir::Operand*                  genOperand(ExpressionNode* node);
+    ir::Operand*                  genCmpOperand(std::string ssaNode);
     std::vector<ir::Instruction*> genExpr(ExpressionNode* node);
-    Symbol* getSymbolByName(std::string name);
+    Symbol*                       getSymbolByName(std::string name);
+    ir::Block*                    getCurrentBlock();
+    ir::Function*                 getCurrentFunction();
+    void                          setTempBlockName(std::string name);
 
   private:
     std::vector<ir::Instruction*> genInstructions(AstNode* node);
@@ -28,6 +32,9 @@ class IrGen
     DiagManager*                                   _diagMngr;
     Ast*                                           _ast;
     SymbolTable*                                   _symTable;
+    ir::Block*                                     _currentBlock;
+    ir::Function*                                  _currentFunc;
+    std::string                                    _tempBlockName;
 };
 } // namespace assembler::ir::gen
 
