@@ -11,6 +11,7 @@ Combine identical branches (cmp rax, 5; je label1; mov rbx, 0; jmp end; label1; 
 Strength reduction (mov rax, 0 -> xor rax, rax. imul rax 4 -> shl rax, 2)
 Tail call optimization (call label1; ret -> jmp label1)
 DRE (mov rax, 5 and rax is never used again -> remove it)
+Loop hoisting
 
 CF -> Control Flow
 DCE -> Dead Code Elimination

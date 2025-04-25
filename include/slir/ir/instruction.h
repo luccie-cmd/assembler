@@ -30,7 +30,7 @@ enum struct Opcode
     Phi,
 
     IcmpEQ,
-    IcmpLE,
+    IcmpL,
 };
 class Instruction
 {

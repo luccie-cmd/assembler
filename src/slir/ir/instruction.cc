@@ -7,7 +7,7 @@ static std::vector<std::pair<Opcode, std::string>> opcodeToStringPairs = {
     {Opcode::Const, "const"}, {Opcode::Store, "store"},    {Opcode::Branch, "br"},
     {Opcode::Call, "call"},   {Opcode::Ret, "ret"},        {Opcode::Copy, "copy"},
     {Opcode::None, "none"},   {Opcode::IcmpEQ, "icmp eq"}, {Opcode::Select, "select"},
-    {Opcode::Phi, "phi"}};
+    {Opcode::Phi, "phi"},     {Opcode::IcmpL, "icmp l"}};
 
 static std::string convertOpcodeToString(Opcode opcode)
 {

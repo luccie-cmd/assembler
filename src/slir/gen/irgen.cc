@@ -23,9 +23,9 @@ IrGen::IrGen(DiagManager* diagMngr, Ast* ast, SymbolTable* symTable)
     this->_symTable = symTable;
 }
 static std::vector<ir::Opcode> resultingOpcodes = {
-    ir::Opcode::Const,  ir::Opcode::Copy,   ir::Opcode::Load,   ir::Opcode::Xor,
-    ir::Opcode::Add,    ir::Opcode::Sub,    ir::Opcode::Imul,   ir::Opcode::Call,
-    ir::Opcode::Select, ir::Opcode::IcmpEQ, ir::Opcode::IcmpLE, ir::Opcode::Phi,
+    ir::Opcode::Const,  ir::Opcode::Copy,   ir::Opcode::Load,  ir::Opcode::Xor,
+    ir::Opcode::Add,    ir::Opcode::Sub,    ir::Opcode::Imul,  ir::Opcode::Call,
+    ir::Opcode::Select, ir::Opcode::IcmpEQ, ir::Opcode::IcmpL, ir::Opcode::Phi,
 };
 static size_t                                           instructionCount = 0;
 static std::vector<std::pair<std::string, std::string>> aliasses;
@@ -731,6 +731,8 @@ static std::vector<ir::Instruction*> genCmove(IrGen* builder, InstructionNode* c
     retInsts.push_back(selectInst);
     return retInsts;
 }
+static size_t falseLabelCounter = 0;
+
 static std::vector<ir::Instruction*> genJe(IrGen* builder, InstructionNode* jeNode)
 {
     ExpressionNode* destExpr = reinterpret_cast<ExpressionNode*>(jeNode->getArgs().at(0));
@@ -739,10 +741,28 @@ static std::vector<ir::Instruction*> genJe(IrGen* builder, InstructionNode* jeNo
         std::printf("ERROR: Invalid je operands. Expected label\n");
         std::exit(1);
     }
-    std::vector<ir::Instruction*> retInsts          = genConditional(ir::Opcode::IcmpEQ);
-    static int                    falseLabelCounter = 0;
+    std::vector<ir::Instruction*> retInsts = genConditional(ir::Opcode::IcmpEQ);
     std::string falseLabel = builder->getCurrentFunction()->getName() + ".__false_temp" +
                              std::to_string(falseLabelCounter++);
+    ir::Instruction* brInst = new ir::Instruction(
+        ir::Opcode::Branch, {builder->genCmpOperand(resultingCmp), builder->genOperand(destExpr),
+                             builder->genOperand(new VariableExpressionNode(
+                                 new Token(falseLabel, TokenType::IDENTIFIER)))});
+    retInsts.push_back(brInst);
+    builder->setTempBlockName(falseLabel);
+    return retInsts;
+}
+static std::vector<ir::Instruction*> genJl(IrGen* builder, InstructionNode* jlNode)
+{
+    ExpressionNode* destExpr = reinterpret_cast<ExpressionNode*>(jlNode->getArgs().at(0));
+    if (destExpr->getExprType() != ExpressionNodeType::Variable)
+    {
+        std::printf("ERROR: Invalid jl operands. Expected label\n");
+        std::exit(1);
+    }
+    std::vector<ir::Instruction*> retInsts = genConditional(ir::Opcode::IcmpL);
+    static std::string falseLabel = builder->getCurrentFunction()->getName() + ".__false_temp" +
+                                    std::to_string(falseLabelCounter++);
     ir::Instruction* brInst = new ir::Instruction(
         ir::Opcode::Branch, {builder->genCmpOperand(resultingCmp), builder->genOperand(destExpr),
                              builder->genOperand(new VariableExpressionNode(
@@ -756,7 +776,7 @@ using GenFunc = std::function<std::vector<ir::Instruction*>(IrGen*, InstructionN
 static std::unordered_map<std::string, GenFunc> generatorMap = {
     {"mov", genMov},     {"xor", genXor}, {"call", genCall}, {"jmp", genJmp},
     {"ret", genRet},     {"add", genAdd}, {"shl", genShl},   {"cmp", genCmp},
-    {"cmove", genCmove}, {"je", genJe},   {"inc", genInc}};
+    {"cmove", genCmove}, {"je", genJe},   {"jl", genJl},     {"inc", genInc}};
 std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
 {
     if (node->getAstNodeType() != AstNodeType::Instruction)
@@ -931,7 +951,8 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                 std::vector<std::pair<std::string, std::string>> newAliasses;
                 for (size_t j = 0; j < block->getAliasses().size(); ++j)
                 {
-                    if (j >= instCountAtNewBlock)
+                    if (std::stoul(block->getAliasses().at(j).second.substr(1)) >=
+                        instCountAtNewBlock)
                     {
                         newAliasses.push_back(block->getAliasses().at(j));
                     }
