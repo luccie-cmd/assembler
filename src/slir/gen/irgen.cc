@@ -29,9 +29,16 @@ static std::vector<ir::Opcode> resultingOpcodes = {
 };
 static size_t                                           instructionCount = 0;
 static std::vector<std::pair<std::string, std::string>> aliasses;
-static std::string getSSAValueFromReg(std::string reg, bool stopAtFound = false)
+static std::string getSSAValueFromReg(IrGen* builder, std::string reg, bool stopAtFound = false)
 {
+    (void)builder;
     std::string name = reg;
+    // ir::Function* func = builder->getCurrentFunction();
+    // ir::Block* currentBlock = builder->getCurrentBlock();
+    // for (std::string preds : currentBlock->getPredecessors())
+    // {
+    //     std::printf("Pred in block %s: %s\n", currentBlock->getName().c_str(), preds.c_str());
+    // }
     for (std::pair<std::string, std::string> oldNewAlias : aliasses)
     {
         if (oldNewAlias.first == name)
@@ -63,11 +70,12 @@ ir::Operand* IrGen::genOperand(ExpressionNode* node)
         std::string             ssaValue;
         if (regExpr->getRegister()->get_value().starts_with('e'))
         {
-            ssaValue = getSSAValueFromReg("%r" + regExpr->getRegister()->get_value().substr(1));
+            ssaValue =
+                getSSAValueFromReg(this, "%r" + regExpr->getRegister()->get_value().substr(1));
         }
         else
         {
-            ssaValue = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+            ssaValue = getSSAValueFromReg(this, "%" + regExpr->getRegister()->get_value());
         }
         return new ir::Operand(
             ir::OperandKind::Register,
@@ -185,7 +193,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         opcode                          = ir::Opcode::Const;
         std::string             result  = newResult();
         RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()), result);
         return {new ir::Instruction(opcode, operands, result)};
     }
     else if (srcArg->getExprType() == ExpressionNodeType::Register &&
@@ -195,7 +203,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         opcode             = ir::Opcode::Copy;
         operands.push_back(builder->genOperand(srcArg));
         RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()), result);
         return {new ir::Instruction(opcode, operands, result)};
     }
     else if (destArg->getExprType() == ExpressionNodeType::Sized &&
@@ -219,7 +227,8 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             {
                 RegisterExpressionNode* regExpr =
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
-                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+                destInstCount =
+                    getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value());
             }
             else
             {
@@ -273,7 +282,8 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             {
                 RegisterExpressionNode* regExpr =
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
-                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+                destInstCount =
+                    getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value());
             }
             else
             {
@@ -321,7 +331,8 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             {
                 RegisterExpressionNode* regExpr =
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
-                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+                destInstCount =
+                    getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value());
             }
             else
             {
@@ -375,7 +386,8 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             {
                 RegisterExpressionNode* regExpr =
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
-                destInstCount = getSSAValueFromReg("%" + regExpr->getRegister()->get_value());
+                destInstCount =
+                    getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value());
             }
             else
             {
@@ -406,7 +418,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         memInsts.push_back(loadInst);
         RegisterExpressionNode* regExpr =
             reinterpret_cast<RegisterExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()), result);
         return memInsts;
     }
     else if (destArg->getExprType() == ExpressionNodeType::Register &&
@@ -423,8 +435,8 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             {
                 RegisterExpressionNode* regExpr =
                     reinterpret_cast<RegisterExpressionNode*>(baseExpr);
-                destInstCount =
-                    std::string(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()));
+                destInstCount = std::string(
+                    getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()));
             }
             else if (baseExpr->getExprType() == ExpressionNodeType::Variable)
             {
@@ -460,7 +472,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
         memInsts.push_back(loadInst);
         RegisterExpressionNode* regExpr =
             reinterpret_cast<RegisterExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()), result);
         return memInsts;
     }
     else if (destArg->getExprType() == ExpressionNodeType::Register &&
@@ -477,7 +489,7 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
             result);
         RegisterExpressionNode* regExpr =
             reinterpret_cast<RegisterExpressionNode*>(reinterpret_cast<ExpressionNode*>(destArg));
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()), result);
         return {constInst};
     }
     else
@@ -490,7 +502,6 @@ static std::vector<ir::Instruction*> genMov(IrGen* builder, InstructionNode* mov
 }
 static std::vector<ir::Instruction*> genXor(IrGen* builder, InstructionNode* xorInst)
 {
-    (void)builder;
     ExpressionNode*           destArg = reinterpret_cast<ExpressionNode*>(xorInst->getArgs().at(0));
     ExpressionNode*           srcArg  = reinterpret_cast<ExpressionNode*>(xorInst->getArgs().at(1));
     ir::Opcode                opcode;
@@ -507,7 +518,8 @@ static std::vector<ir::Instruction*> genXor(IrGen* builder, InstructionNode* xor
             opcode                          = ir::Opcode::Const;
             std::string             result  = newResult();
             RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destArg);
-            addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()), result);
+            addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()),
+                     result);
             return {new ir::Instruction(opcode, operands, result)};
         }
         else
@@ -553,7 +565,7 @@ static std::vector<ir::Instruction*> genAdd(IrGen* builder, InstructionNode* add
         ir::Operand*            srcOperand  = builder->genOperand(srcNode);
         RegisterExpressionNode* regExpr     = reinterpret_cast<RegisterExpressionNode*>(destNode);
         ir::Operand*            destOperand = builder->genOperand(destNode);
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()).c_str(),
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()).c_str(),
                  result.c_str());
         retInsts.push_back(new ir::Instruction(ir::Opcode::Add, {destOperand, srcOperand}, result));
     }
@@ -589,7 +601,7 @@ static std::vector<ir::Instruction*> genShl(IrGen* builder, InstructionNode* shl
         ir::Operand*            srcOperand  = builder->genOperand(immExpr);
         RegisterExpressionNode* regExpr     = reinterpret_cast<RegisterExpressionNode*>(destNode);
         ir::Operand*            destOperand = builder->genOperand(destNode);
-        addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()).c_str(),
+        addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()).c_str(),
                  result.c_str());
         retInsts.push_back(
             new ir::Instruction(ir::Opcode::Imul, {destOperand, srcOperand}, result));
@@ -641,7 +653,6 @@ static const char* nToArg(size_t i)
 }
 static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* callNode)
 {
-    (void)builder;
     ExpressionNode* destArg = reinterpret_cast<ExpressionNode*>(callNode->getArgs().at(0));
     if (destArg->getExprType() != ExpressionNodeType::Variable)
     {
@@ -661,7 +672,7 @@ static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* ca
         operands.push_back(builder->genOperand(regExpr));
     }
     ir::Instruction* inst = new ir::Instruction(ir::Opcode::Call, operands, result);
-    addAlias(getSSAValueFromReg("%rax"), result);
+    addAlias(getSSAValueFromReg(builder, "%rax"), result);
     return {inst};
 }
 static std::vector<ir::Instruction*> genJmp(IrGen* builder, InstructionNode* callNode)
@@ -727,7 +738,8 @@ static std::vector<ir::Instruction*> genCmove(IrGen* builder, InstructionNode* c
                              builder->genOperand(destExpr)},
                             result);
     RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destExpr);
-    addAlias(getSSAValueFromReg("%" + regExpr->getRegister()->get_value()).c_str(), result.c_str());
+    addAlias(getSSAValueFromReg(builder, "%" + regExpr->getRegister()->get_value()).c_str(),
+             result.c_str());
     retInsts.push_back(selectInst);
     return retInsts;
 }
@@ -1049,7 +1061,7 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                 for (std::string pred : loopBlock->getPredecessors())
                 {
                     aliasses             = func->getBlockByName(pred)->getAliasses();
-                    std::string ssaValue = getSSAValueFromReg("%rax", false);
+                    std::string ssaValue = getSSAValueFromReg(this, "%rax", false);
                     if (seen.insert(ssaValue).second)
                     {
                         phiInputs.emplace_back(ssaValue, pred);
@@ -1244,5 +1256,3 @@ void IrGen::setTempBlockName(std::string name)
     this->_tempBlockName = name;
 }
 }; // namespace assembler::ir::gen
-
-// FIX Multiple rets to branch to 1 UnifiedReturn like LLVM does

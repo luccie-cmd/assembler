@@ -3,6 +3,7 @@
 
 namespace assembler::ir::ir
 {
+std::unordered_map<std::string, Block*> lazyCreationList;
 Function::Function(std::string _name, size_t _arguments, FunctionBinding bind)
 {
     this->name      = _name;
@@ -33,6 +34,11 @@ static const char* nToArg(size_t i)
 }
 void Function::print(size_t spacing, bool dumpInternal)
 {
+    if (!lazyCreationList.empty())
+    {
+        std::printf("ICE: Function `%s` lazy creation list not empty\n", this->name.c_str());
+        std::exit(1);
+    }
     for (size_t i = 0; i < spacing; ++i)
     {
         std::putchar(' ');
@@ -91,7 +97,6 @@ std::string Function::getName()
 {
     return this->name;
 }
-std::unordered_map<std::string, Block*> lazyCreationList;
 
 void Function::addBlock(Block* block)
 {
