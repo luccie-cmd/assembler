@@ -563,11 +563,11 @@ static std::vector<ir::Instruction*> genAdd(IrGen* builder, InstructionNode* add
     }
     return retInsts;
 }
-static std::vector<ir::Instruction*> genShl(IrGen* builder, InstructionNode* addNode)
+static std::vector<ir::Instruction*> genShl(IrGen* builder, InstructionNode* shlNode)
 {
     std::vector<ir::Instruction*> retInsts = {};
-    ExpressionNode* destNode = reinterpret_cast<ExpressionNode*>(addNode->getArgs().at(0));
-    ExpressionNode* srcNode  = reinterpret_cast<ExpressionNode*>(addNode->getArgs().at(1));
+    ExpressionNode* destNode = reinterpret_cast<ExpressionNode*>(shlNode->getArgs().at(0));
+    ExpressionNode* srcNode  = reinterpret_cast<ExpressionNode*>(shlNode->getArgs().at(1));
     if (destNode->getExprType() == ExpressionNodeType::Memory)
     {
         std::printf("TODO: Generate memory destination shift lefts\n");
@@ -598,6 +598,32 @@ static std::vector<ir::Instruction*> genShl(IrGen* builder, InstructionNode* add
     {
         std::printf("TODO: Generate %lu source %lu destination shift lefts\n",
                     (size_t)srcNode->getExprType(), (size_t)destNode->getExprType());
+        std::exit(1);
+    }
+    return retInsts;
+}
+static std::vector<ir::Instruction*> genInc(IrGen* builder, InstructionNode* incNode)
+{
+    std::vector<ir::Instruction*> retInsts = {};
+    ExpressionNode* destNode = reinterpret_cast<ExpressionNode*>(incNode->getArgs().at(0));
+    if (destNode->getExprType() == ExpressionNodeType::Memory)
+    {
+        retInsts = builder->genExpr(destNode);
+    }
+    else if (destNode->getExprType() == ExpressionNodeType::Register)
+    {
+        RegisterExpressionNode* regExpr = reinterpret_cast<RegisterExpressionNode*>(destNode);
+        std::string             result  = newResult();
+        aliasses.push_back({regExpr->getRegister()->get_value(), result});
+        ImmediateExpressionNode* immExpr =
+            new ImmediateExpressionNode(new Token(std::to_string(1), TokenType::LIT_NUMBER));
+        retInsts.push_back(new ir::Instruction(
+            ir::Opcode::Add, {builder->genOperand(destNode), builder->genOperand(immExpr)},
+            result));
+    }
+    else
+    {
+        std::printf("ERROR: Can only execute `inc` on memory or register values");
         std::exit(1);
     }
     return retInsts;
@@ -728,8 +754,9 @@ static std::vector<ir::Instruction*> genJe(IrGen* builder, InstructionNode* jeNo
 static std::vector<std::string> unIROpcodes = {"push", "pop"};
 using GenFunc = std::function<std::vector<ir::Instruction*>(IrGen*, InstructionNode*)>;
 static std::unordered_map<std::string, GenFunc> generatorMap = {
-    {"mov", genMov}, {"xor", genXor}, {"call", genCall}, {"jmp", genJmp},     {"ret", genRet},
-    {"add", genAdd}, {"shl", genShl}, {"cmp", genCmp},   {"cmove", genCmove}, {"je", genJe}};
+    {"mov", genMov},     {"xor", genXor}, {"call", genCall}, {"jmp", genJmp},
+    {"ret", genRet},     {"add", genAdd}, {"shl", genShl},   {"cmp", genCmp},
+    {"cmove", genCmove}, {"je", genJe},   {"inc", genInc}};
 std::vector<ir::Instruction*> IrGen::genInstructions(AstNode* node)
 {
     if (node->getAstNodeType() != AstNodeType::Instruction)
