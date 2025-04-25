@@ -938,6 +938,9 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
             }
         }
         // Connect nodes
+        InstructionNode* dummyInstRet =
+            new InstructionNode(new Token("ret", TokenType::IDENTIFIER), {});
+        func->addBlock(this->genBlock(func->getName() + ".UnifiedReturn", {dummyInstRet}));
         for (ir::Block* block : func->getBlocks())
         {
             ir::Instruction* last = block->getInstructions().back();
@@ -959,6 +962,14 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                     func->getBlockByName(succ.substr(1))->addPredecessors(block->getName());
                 }
             }
+            if (last->getOpcode() == ir::Opcode::Ret && block != func->getBlocks().back())
+            {
+                block->removeLastInst();
+                block->addInstruction(new ir::Instruction(
+                    ir::Opcode::Branch,
+                    {this->genOperand(new VariableExpressionNode(
+                        new Token(func->getName() + ".UnifiedReturn", TokenType::IDENTIFIER)))}));
+            }
             if (block == func->getBlocks().back())
             {
                 if (block->getInstructions().back()->getOpcode() != ir::Opcode::Ret)
@@ -978,12 +989,18 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                         phiInputs.emplace_back(ssaValue, pred);
                     }
                 }
-                aliasses = block->getAliasses();
+                for (ir::Block* blk : func->getBlocks())
+                {
+                    for (std::pair<std::string, std::string> alias : blk->getAliasses())
+                    {
+                        aliasses.push_back(alias);
+                    }
+                }
+                block->removeLastInst();
                 if (phiInputs.size() > 1)
                 {
                     std::string newSSA = newResult();
                     aliasses.push_back({"%rax", newSSA});
-                    block->removeLastInst();
                     block->addInstruction(
                         new ir::Instruction(ir::Opcode::Phi, phiInputs, newSSA, true));
                 }
@@ -1159,25 +1176,4 @@ void IrGen::setTempBlockName(std::string name)
 }
 }; // namespace assembler::ir::gen
 
-// void generatePhiForFunction(Function& func, BasicBlock* block) {
-//     // Collect SSA values for phi node from predecessors
-//     std::vector<std::pair<std::string, std::string>> phiInputs;
-//     std::set<std::string> seen;  // To ensure uniqueness
-
-//     // Loop over predecessors
-//     for (const auto& pred : block->predecessors) {
-//         // Get SSA value for each predecessor, respecting aliasing
-//         std::string ssaValue = getSSAValueFromFunction(func, "%rax");  // Example for %rax
-//         if (seen.insert(ssaValue).second) {
-//             // Add the SSA value and predecessor block label
-//             phiInputs.emplace_back(ssaValue, pred);
-//         }
-//     }
-
-//     // If we have multiple predecessors, we need a phi node
-//     if (phiInputs.size() > 1) {
-//         std::string newSSA = newResult();  // Generate new SSA name for phi node
-//         func.aliases.push_back({"%rax", newSSA});  // Store alias for %rax
-//         addInstruction(block->label, new ir::Instruction(ir::Opcode::Phi, phiInputs, newSSA));
-//     }
-// }
+// FIX Multiple rets to branch to 1 UnifiedReturn like LLVM does
