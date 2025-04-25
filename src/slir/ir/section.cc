@@ -7,12 +7,12 @@ Section::Section(std::string _name)
     this->name = _name;
 }
 Section::~Section() {}
-void Section::print()
+void Section::print(bool dumpInternal)
 {
     std::printf("%s {\n", this->name.c_str());
     for (Function* func : this->functions)
     {
-        func->print(4);
+        func->print(4, dumpInternal);
     }
     std::puts("}");
 }

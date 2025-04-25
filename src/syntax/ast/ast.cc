@@ -7,11 +7,14 @@ Ast::Ast(std::vector<AstNode*> _nodes)
     this->nodes = _nodes;
 }
 Ast::~Ast() {}
-void Ast::print()
+void Ast::print(bool dumpInternal)
 {
-    for (AstNode* node : nodes)
+    if (dumpInternal)
     {
-        node->print(0);
+        for (AstNode* node : nodes)
+        {
+            node->print(0);
+        }
     }
 }
 std::vector<AstNode*>& Ast::getNodes()

@@ -11,7 +11,7 @@ class Module
   public:
     Module();
     ~Module();
-    void print();
+    void print(bool dumpInternal);
     void addSection(Section* section);
 
   private:

@@ -4,11 +4,11 @@ namespace assembler::ir::ir
 {
 Module::Module() {}
 Module::~Module() {}
-void Module::print()
+void Module::print(bool dumpInternal)
 {
     for (Section* section : this->sections)
     {
-        section->print();
+        section->print(dumpInternal);
     }
 }
 void Module::addSection(Section* section)

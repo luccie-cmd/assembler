@@ -938,12 +938,23 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
             }
         }
         // Connect nodes
-        InstructionNode* dummyInstRet =
-            new InstructionNode(new Token("ret", TokenType::IDENTIFIER), {});
-        func->addBlock(this->genBlock(func->getName() + ".UnifiedReturn", {dummyInstRet}));
+        size_t foundRets = 0;
         for (ir::Block* block : func->getBlocks())
         {
             ir::Instruction* last = block->getInstructions().back();
+            if (last->getOpcode() == ir::Opcode::Ret)
+            {
+                foundRets++;
+                if (foundRets - 1 != 0 || block != func->getBlocks().back())
+                {
+                    block->removeLastInst();
+                    block->addInstruction(new ir::Instruction(
+                        ir::Opcode::Branch,
+                        {this->genOperand(new VariableExpressionNode(new Token(
+                            func->getName() + ".UnifiedReturn", TokenType::IDENTIFIER)))}));
+                    last = block->getInstructions().back();
+                }
+            }
             if (last->getOpcode() == ir::Opcode::Branch)
             {
                 std::vector<std::string> successors;
@@ -958,20 +969,27 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                 }
                 for (std::string succ : successors)
                 {
-                    block->addSuccessors(succ);
+                    block->addSuccessors(succ.substr(1));
                     func->getBlockByName(succ.substr(1))->addPredecessors(block->getName());
                 }
             }
-            if (last->getOpcode() == ir::Opcode::Ret && block != func->getBlocks().back())
-            {
-                block->removeLastInst();
-                block->addInstruction(new ir::Instruction(
-                    ir::Opcode::Branch,
-                    {this->genOperand(new VariableExpressionNode(
-                        new Token(func->getName() + ".UnifiedReturn", TokenType::IDENTIFIER)))}));
-            }
             if (block == func->getBlocks().back())
             {
+                std::string findName = block->getName();
+                if (foundRets != 1)
+                {
+                    InstructionNode* dummyInstRet =
+                        new InstructionNode(new Token("ret", TokenType::IDENTIFIER), {});
+                    func->addBlock(
+                        this->genBlock(func->getName() + ".UnifiedReturn", {dummyInstRet}));
+                    findName = func->getName() + ".UnifiedReturn";
+                }
+                ir::Block* loopBlock = block;
+                if (foundRets != 1)
+                {
+                    loopBlock = func->getBlockByName(findName);
+                }
+                block = func->getBlockByName(findName);
                 if (block->getInstructions().back()->getOpcode() != ir::Opcode::Ret)
                 {
                     this->_diagMngr->log(
@@ -980,7 +998,7 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                 }
                 std::vector<std::pair<std::string, std::string>> phiInputs;
                 std::set<std::string>                            seen;
-                for (std::string pred : block->getPredecessors())
+                for (std::string pred : loopBlock->getPredecessors())
                 {
                     aliasses             = func->getBlockByName(pred)->getAliasses();
                     std::string ssaValue = getSSAValueFromReg("%rax", false);
@@ -999,8 +1017,11 @@ ir::Function* IrGen::genFunction(std::string name, std::vector<AstNode*> nodes)
                 block->removeLastInst();
                 if (phiInputs.size() > 1)
                 {
-                    std::string newSSA = newResult();
-                    aliasses.push_back({"%rax", newSSA});
+                    aliasses.clear();
+                    std::string newSSA       = newResult();
+                    std::string aliassedName = "%rax";
+                    aliasses.push_back({aliassedName, newSSA});
+                    block->addAlias({aliassedName, newSSA});
                     block->addInstruction(
                         new ir::Instruction(ir::Opcode::Phi, phiInputs, newSSA, true));
                 }

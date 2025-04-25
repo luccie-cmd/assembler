@@ -11,6 +11,7 @@ std::string                                                   inputFile;
 std::string                                                   outputFile;
 bool                                                          dumpAst;
 bool                                                          dumpIr;
+bool                                                          dumpInternal;
 std::unordered_map<assembler::optimizations, bool>            enabledOpts;
 std::vector<std::pair<std::string, assembler::optimizations>> stringOpts = {
     {"const-fold", assembler::optimizations::ConstantFolding},
@@ -70,6 +71,10 @@ int unknownArg(std::string path)
         {
             dumpIr = true;
         }
+        if (tree == "internal")
+        {
+            dumpInternal = true;
+        }
         return 0;
     }
     if (std::filesystem::exists(path))
@@ -106,7 +111,7 @@ int main(int argc, char** argv)
                                                                                    : assembler::outputFormat::INVALID));
     assembler::DiagManager* diagManager = new assembler::DiagManager(inputFile, true, true);
     assembler::Context*     ctx = new assembler::Context(contents, diagManager, outputFile, ob, of,
-                                                         enabledOpts, dumpAst, dumpIr);
+                                                         enabledOpts, dumpAst, dumpIr, dumpInternal);
     ctx->start();
     return 0;
 }

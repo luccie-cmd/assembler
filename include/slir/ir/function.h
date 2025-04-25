@@ -18,7 +18,7 @@ class Function
   public:
     Function(std::string name, size_t arguments, FunctionBinding bind);
     ~Function();
-    void        print(size_t spacing);
+    void        print(size_t spacing, bool dumpInternal);
     void        addBlock(Block* block);
     Block*      getBlockByName(std::string name);
     std::string getName();

@@ -12,13 +12,14 @@ class Block
   public:
     Block(std::string name);
     ~Block();
-    void                     print(size_t spacing);
+    void                     print(size_t spacing, bool dumpInternal);
     void                     addInstruction(Instruction* inst);
     void                     addPredecessors(std::string predecessor);
     void                     addSuccessors(std::string successor);
     void                     replacePredecessor(std::string oldPred, std::string newPred);
     void                     replaceSuccessor(std::string oldSucs, std::string newSucs);
     void                     addAliasses(std::vector<std::pair<std::string, std::string>> aliasses);
+    void                     addAlias(std::pair<std::string, std::string> alias);
     void                     removeLastInst();
     std::vector<std::string> getPredecessors();
     std::vector<std::string> getSuccessors();

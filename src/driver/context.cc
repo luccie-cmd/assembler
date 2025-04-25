@@ -10,16 +10,17 @@ namespace assembler
 {
 Context::Context(std::string contents, DiagManager* diagManager, std::string outfile, outputBits ob,
                  outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts,
-                 bool dumpAst, bool dumpIR)
+                 bool dumpAst, bool dumpIR, bool dumpInternal)
 {
-    this->_contents    = contents;
-    this->_diagManager = diagManager;
-    this->_outfile     = outfile;
-    this->_ob          = ob;
-    this->_of          = of;
-    this->_enabledOpts = enabledOpts;
-    this->_dumpAst     = dumpAst;
-    this->_dumpIR      = dumpIR;
+    this->_contents     = contents;
+    this->_diagManager  = diagManager;
+    this->_outfile      = outfile;
+    this->_ob           = ob;
+    this->_of           = of;
+    this->_enabledOpts  = enabledOpts;
+    this->_dumpAst      = dumpAst;
+    this->_dumpIR       = dumpIR;
+    this->_dumpInternal = dumpInternal;
 }
 Context::~Context() {}
 void Context::start()
@@ -38,13 +39,13 @@ void Context::start()
     sema->verify();
     if (this->_dumpAst)
     {
-        ast->print();
+        ast->print(this->_dumpInternal);
     }
     ir::gen::IrGen* irGen   = new ir::gen::IrGen(this->_diagManager, ast, sema->getSymTable());
     ir::ir::Module* _module = irGen->genModule();
     if (this->_dumpIR)
     {
-        _module->print();
+        _module->print(this->_dumpInternal);
     }
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is codegen)\n");

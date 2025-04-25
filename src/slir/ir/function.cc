@@ -31,7 +31,7 @@ static const char* nToArg(size_t i)
     }
     return "stack";
 }
-void Function::print(size_t spacing)
+void Function::print(size_t spacing, bool dumpInternal)
 {
     for (size_t i = 0; i < spacing; ++i)
     {
@@ -79,7 +79,7 @@ void Function::print(size_t spacing)
     std::printf("{\n");
     for (Block* block : this->blocks)
     {
-        block->print(4 + spacing);
+        block->print(4 + spacing, dumpInternal);
     }
     for (size_t i = 0; i < spacing; ++i)
     {

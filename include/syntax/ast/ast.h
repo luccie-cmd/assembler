@@ -11,7 +11,7 @@ class Ast
   public:
     Ast(std::vector<AstNode*> nodes);
     ~Ast();
-    void                  print();
+    void                  print(bool dumpInternal);
     std::vector<AstNode*>& getNodes();
 
   private:

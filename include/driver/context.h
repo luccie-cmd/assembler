@@ -32,7 +32,7 @@ class Context
   public:
     Context(std::string contents, DiagManager* diagManager, std::string outfile, outputBits ob,
             outputFormat of, std::unordered_map<assembler::optimizations, bool> enabledOpts,
-            bool dumpAst, bool dumpIR);
+            bool dumpAst, bool dumpIR, bool dumpInternal);
     ~Context();
     void start();
 
@@ -44,6 +44,7 @@ class Context
     outputFormat                                       _of;
     bool                                               _dumpAst;
     bool                                               _dumpIR;
+    bool                                               _dumpInternal;
     std::unordered_map<assembler::optimizations, bool> _enabledOpts;
 };
 } // namespace assembler
