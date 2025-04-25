@@ -1,5 +1,5 @@
 config: 'release'
-compiler: 'gcc'
+compiler: 'clang'
 outDir: 'bin'
 analyzer: 'no'
 lto: 'no'

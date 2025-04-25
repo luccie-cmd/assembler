@@ -1,3 +1,4 @@
+#include <codegen/codegen.h>
 #include <driver/context.h>
 #include <opts/constantFolding.h>
 #include <sema/sema.h>
@@ -47,6 +48,8 @@ void Context::start()
     {
         _module->print(this->_dumpInternal);
     }
+    codegen::CodeGen* gen = new codegen::CodeGen(_module);
+    gen->genAsm();
     this->_diagManager->log(DiagLevel::ICE, 0,
                             "TODO: Go further trough the pipeline (Next is codegen)\n");
 }
