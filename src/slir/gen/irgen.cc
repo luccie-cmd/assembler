@@ -651,7 +651,7 @@ static std::vector<ir::Instruction*> genCall(IrGen* builder, InstructionNode* ca
     VariableExpressionNode*   varExpr   = reinterpret_cast<VariableExpressionNode*>(destArg);
     std::string               result    = newResult();
     std::vector<ir::Operand*> operands  = {new ir::Operand(ir::OperandKind::Variable,
-                                                           new ir::Type(ir::TypeKind::Label, 64),
+                                                           new ir::Type(ir::TypeKind::Function, 64),
                                                            "@" + varExpr->getName()->get_value())};
     Symbol*                   calledSym = builder->getSymbolByName(varExpr->getName()->get_value());
     for (size_t i = 0; i < calledSym->getArgumentsCount(); ++i)

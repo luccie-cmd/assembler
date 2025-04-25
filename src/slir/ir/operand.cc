@@ -32,6 +32,10 @@ void Operand::print()
     {
         std::printf("label ");
     }
+    else if (this->type->kind == TypeKind::Function)
+    {
+        std::printf("function ");
+    }
     else
     {
         std::printf("TODO: print TypeKind::%lu\n", (size_t)this->type->kind);

@@ -10,6 +10,7 @@ enum struct TypeKind
     Integer,
     Pointer,
     Label,
+    Function,
 };
 struct Type
 {
